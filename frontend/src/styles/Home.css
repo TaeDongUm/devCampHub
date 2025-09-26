@@ -1,0 +1,78 @@
+/* ===== Home 화면 전용 ===== */
+
+/* 레이아웃 기본 */
+.home {
+  min-height: 100vh;              /* 전체 높이 */
+  display: flex;                  /* Flex 중앙 배치 */
+  align-items: center;            /* 세로 중앙 */
+  justify-content: center;        /* 가로 중앙 */
+  padding: 24px;
+  color: #111;
+}
+
+/* 그라데이션 히어로 카드 */
+.home-hero {
+  /* 그라데이션 적용 */
+  background: linear-gradient(135deg, #6C47FF 0%, #8A4DFF 55%, #5CD4FF 100%);
+  border-radius: 24px;
+  padding: 48px;
+  color: #fff;
+  box-shadow: 0 6px 24px rgba(20, 20, 20, 0.25);
+}
+
+/* 상단 칩 */
+.home-chip {
+  display: inline-block;
+  background: rgba(255,255,255,0.15);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+/* 타이틀/설명 */
+.home-title { font-size: 40px; font-weight: 800; line-height: 1.2; margin: 0 0 10px; }
+.home-desc  { font-size: 18px; opacity: 0.95; max-width: 760px; }
+
+/* 액션 버튼 */
+.home-actions { margin-top: 28px; }
+.btn-primary {
+  background: #fff;
+  color: #111;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 12px 18px;
+  border: none;
+  cursor: pointer;
+}
+
+/* 섹션 공통 */
+.home-section { margin-top: 32px; }
+.section-title { font-size: 20px; font-weight: 700; margin: 0 0 12px; }
+
+/* 기능 카드 */
+.feature-grid { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.feature-card {
+  background: rgba(17,17,17,0.04);
+  border: 1px solid rgba(17,17,17,0.08);
+  border-radius: 16px;
+  padding: 14px;
+}
+.feature-title { font-weight: 700; }
+.feature-desc  { font-size: 14px; color: #333; margin-top: 4px; }
+
+/* 단계 카드 */
+.how-grid { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.how-card {
+  background: rgba(17,17,17,0.04);
+  border: 1px solid rgba(17,17,17,0.08);
+  border-radius: 16px;
+  padding: 16px;
+}
+.how-step { color: #6C47FF; font-size: 12px; letter-spacing: .05em; }
+.how-title { font-weight: 700; margin-top: 4px; }
+.how-desc  { font-size: 14px; color: #333; margin-top: 6px; }
+
+/* 반응형 */
+@media (max-width: 1024px) { .feature-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .feature-grid { grid-template-columns: 1fr; } .how-grid { grid-template-columns: 1fr; } }
