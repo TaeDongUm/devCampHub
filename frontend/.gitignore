@@ -1,0 +1,15 @@
+# React / Vite
+node_modules/
+dist/
+build/
+.vite/
+.cache/
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Misc
+*.log

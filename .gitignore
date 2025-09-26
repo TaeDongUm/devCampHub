@@ -1,0 +1,40 @@
+# --- OS / IDE 공통 ---
+.DS_Store
+Thumbs.db
+*.sw?
+.idea/
+*.iml
+.vscode/
+
+# --- Logs ---
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Security / Secrets (공통) ---
+.env
+.env.local
+.env.*.local
+secrets/*.*
+!secrets/.gitkeep
+
+# --- Monorepo 산출물 통합 제외 ---
+/frontend/node_modules/
+/frontend/dist/
+/frontend/build/
+/frontend/.vite/
+/frontend/.cache/
+/frontend/*.tsbuildinfo
+
+/backend/target/
+/backend/build/
+/backend/.gradle/
+/backend/out/
+
+# --- Spring Boot 환경파일(루트 보안망) ---
+/backend/src/main/resources/application*.yml
+/backend/src/main/resources/application*.yaml
+/backend/src/main/resources/application*.properties
