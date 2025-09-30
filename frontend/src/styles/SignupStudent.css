@@ -1,0 +1,12 @@
+.sstu { min-height:100vh; display:grid; place-items:center; padding:24px; }
+.sstu-card {
+  background: linear-gradient(135deg,#6C47FF 0%,#8A4DFF 55%,#5CD4FF 100%);
+  border-radius:24px; padding:36px; color:#fff; width:100%; max-width:520px;
+  box-shadow:0 6px 24px rgba(20,20,20,.25);
+}
+.sstu-title { font-size:28px; font-weight:800; margin:0 0 18px; text-align:center; }
+.sstu-form { display:flex; flex-direction:column; gap:12px; }
+.sstu-input { padding:12px 14px; border-radius:12px; border:none; font-size:16px; color:#111; }
+.btn-primary { background:#fff; color:#111; font-weight:700; border-radius:12px; padding:12px 18px; border:none; cursor:pointer; }
+.sstu-footer { margin-top:12px; font-size:14px; text-align:center; }
+.sstu-footer a { color:#fff; font-weight:700; text-decoration:underline; }
