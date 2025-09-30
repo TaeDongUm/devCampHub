@@ -1,0 +1,13 @@
+.choice { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.choice-card {
+  background: linear-gradient(135deg,#6C47FF 0%,#8A4DFF 55%,#5CD4FF 100%);
+  border-radius: 24px; padding: 36px; color:#fff; width:100%; max-width:480px;
+  box-shadow: 0 6px 24px rgba(20,20,20,.25); text-align:center;
+}
+.choice-title { font-size:28px; font-weight:800; margin:0 0 8px; }
+.choice-sub { opacity:.9; margin-bottom:16px; }
+.choice-actions { display:flex; flex-direction:column; gap:12px; }
+.btn-primary { background:#fff; color:#111; font-weight:700; border-radius:12px; padding:12px 18px; border:none; cursor:pointer; }
+.btn-outline { background:transparent; color:#fff; font-weight:700; border-radius:12px; padding:12px 18px; border:2px solid rgba(255,255,255,.9); cursor:pointer; }
+.choice-footer { margin-top:14px; font-size:14px; }
+.choice-footer a { color:#fff; font-weight:700; text-decoration:underline; }
