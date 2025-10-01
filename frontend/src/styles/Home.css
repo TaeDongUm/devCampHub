@@ -2,27 +2,35 @@
 
 /* 레이아웃 기본 */
 .home {
-  min-height: 100vh;              /* 전체 높이 */
-  display: flex;                  /* Flex 중앙 배치 */
-  align-items: center;            /* 세로 중앙 */
-  justify-content: center;        /* 가로 중앙 */
-  padding: 24px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;         /* ⬅️ 가로 가운데 */
+  justify-content: flex-start; /* ⬅️ 위에서부터 쌓음 */
+  padding: 32px 24px 80px;
   color: #111;
+  background: #fff;            /* ⬅️ 배경을 흰색으로 */
 }
 
-/* 그라데이션 히어로 카드 */
+/* 그라데이션 히어로 카드 (보라색) */
 .home-hero {
-  /* 그라데이션 적용 */
   background: linear-gradient(135deg, #6C47FF 0%, #8A4DFF 55%, #5CD4FF 100%);
   border-radius: 24px;
   padding: 48px;
   color: #fff;
   box-shadow: 0 6px 24px rgba(20, 20, 20, 0.25);
+  text-align: center;           /* 내부 인라인 요소들을 중앙 정렬 */
+  width: 100%;
+  max-width: 960px;             /* ⬅️ 카드 폭 제한 */
+  margin: 0 auto 28px;          /* ⬅️ 가운데 배치 */
 }
 
 /* 상단 칩 */
 .home-chip {
   display: inline-block;
+  flex-direction: column;
+  align-items: center;         /* ⬅️ 가로 가운데 */
+  justify-content: flex-start; /* ⬅️ 위에서부터 쌓음 */
   background: rgba(255,255,255,0.15);
   padding: 6px 10px;
   border-radius: 999px;
@@ -32,7 +40,7 @@
 
 /* 타이틀/설명 */
 .home-title { font-size: 40px; font-weight: 800; line-height: 1.2; margin: 0 0 10px; }
-.home-desc  { font-size: 18px; opacity: 0.95; max-width: 760px; }
+.home-desc  { font-size: 18px; opacity: 0.95; }
 
 /* 액션 버튼 */
 .home-actions { margin-top: 28px; }
@@ -47,32 +55,48 @@
 }
 
 /* 섹션 공통 */
-.home-section { margin-top: 32px; }
-.section-title { font-size: 20px; font-weight: 700; margin: 0 0 12px; }
-
-/* 기능 카드 */
-.feature-grid { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.feature-card {
-  background: rgba(17,17,17,0.04);
-  border: 1px solid rgba(17,17,17,0.08);
-  border-radius: 16px;
-  padding: 14px;
+.home-section {
+  width: 100%;
+  max-width: 960px;              /* ⬅️ 카드와 폭 맞춤 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;           /* ⬅️ 섹션 내부 가운데 정렬 */
+  margin-top: 32px;
 }
-.feature-title { font-weight: 700; }
-.feature-desc  { font-size: 14px; color: #333; margin-top: 4px; }
+.section-title {
+  font-size: 20px; font-weight: 700; margin: 0 0 16px;
+  text-align: center;            /* ⬅️ 가운데 정렬 */
+}
 
-/* 단계 카드 */
-.how-grid { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* 기능/단계 카드를 "세로 하나씩" 가운데 배치 */
+.feature-grid,
+.how-grid {
+  display: flex;
+  flex-direction: column;       /* ⬅️ 세로 쌓기 */
+  align-items: center;          /* ⬅️ 가운데 정렬 */
+  gap: 12px;
+  width: 100%;
+}
+
+/* 카드 공통 폭: 가운데 한 줄 느낌 */
+.feature-card,
 .how-card {
+  width: min(820px, 92vw);      /* ⬅️ 카드 폭 제한 + 가운데 정렬 */
   background: rgba(17,17,17,0.04);
   border: 1px solid rgba(17,17,17,0.08);
   border-radius: 16px;
   padding: 16px;
 }
+
+.feature-title { font-weight: 700; }
+.feature-desc  { font-size: 14px; color: #333; margin-top: 4px; }
+
 .how-step { color: #6C47FF; font-size: 12px; letter-spacing: .05em; }
 .how-title { font-weight: 700; margin-top: 4px; }
 .how-desc  { font-size: 14px; color: #333; margin-top: 6px; }
 
-/* 반응형 */
-@media (max-width: 1024px) { .feature-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 640px)  { .feature-grid { grid-template-columns: 1fr; } .how-grid { grid-template-columns: 1fr; } }
+/* 반응형(단일 열이라 간단) */
+@media (max-width: 640px) {
+  .home-title { font-size: 34px; }
+  .home-hero { padding: 36px; }
+}

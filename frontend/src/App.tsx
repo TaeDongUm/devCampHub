@@ -1,7 +1,10 @@
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import Signup from "./pages/Signup";
+import SignupChoice from "./pages/SignupChoice";
+import SignupAdmin from "./pages/SignupAdmin";
+import SignupStudent from "./pages/SignupStudent";
+import Verify from "./pages/VerifyEmail";
 
 function RoutedHome() {
   const navigate = useNavigate();
@@ -14,7 +17,10 @@ export default function App() {
       <Routes>
         <Route path="/" element={<RoutedHome />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/signupchoice" element={<SignupChoice />} />
+        <Route path="/signup/admin" element={<SignupAdmin />} />
+        <Route path="/signup/student" element={<SignupStudent />} />
+        <Route path="/verify" element={<Verify />} />
       </Routes>
     </BrowserRouter>
   );

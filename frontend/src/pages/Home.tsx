@@ -15,11 +15,11 @@ export default function Home({ onStart }: Props) {
         <div className="home-chip">부스트캠프 통합 관리 • 출석 · 방송/채팅 · 녹화/아카이브</div>
 
         <h1 className="home-title">
-          캠프 운영을 한곳에서.
-          <br /> devCampHub (Camon-style)
+          <p style={{ textAlign: "center" }}>캠프 운영을 한곳에서</p>
+          <p style={{ textAlign: "center" }}>devCampHub</p>
         </h1>
 
-        <p className="home-desc">
+        <p className="home-desc" style={{ textAlign: "center" }}>
           실시간 방송/채팅으로 소통하고, 자동 출석과 녹화/아카이브로 운영 효율을 높입니다.
           관리자와 학생 모두 브라우저만 있으면 바로 시작할 수 있어요.
         </p>

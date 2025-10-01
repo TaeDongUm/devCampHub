@@ -2,7 +2,7 @@ import React from "react";
 import "../styles/Login.css";
 
 export default function Login() {
-  const goSignup = () => (window.location.href = "/signup");
+  const goSignup = () => (window.location.href = "/signupchoice");
 
   return (
     <main className="login">
