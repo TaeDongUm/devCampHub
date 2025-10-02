@@ -8,6 +8,8 @@ import Verify from "./pages/VerifyEmail";
 import AdminHome from "./pages/AdminHome";
 import StudentHome from "./pages/StudentHome";
 import CampDetail from "./pages/CampDetail";
+import DashBoardHome from "./pages/DashboardHome";
+import Settings from "./pages/Settings";
 
 function RoutedHome() {
   const navigate = useNavigate();
@@ -27,6 +29,8 @@ export default function App() {
         <Route path="/admin/home" element={<AdminHome />} />
         <Route path="/student/home" element={<StudentHome />} />
         <Route path="/camp/:id" element={<CampDetail />} />
+        <Route path="/dashboard/home" element={<DashBoardHome />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </BrowserRouter>
   );

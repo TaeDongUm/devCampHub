@@ -26,11 +26,12 @@ export default function Login() {
     }
 
     localStorage.setItem("role", found.role); // ✅ 역할 저장
-    if (found.role === "admin") {
-      navigate("/admin/home");
-    } else {
-      navigate("/student/home");
-    }
+    // if (found.role === "admin") {
+    //   navigate("/admin/home");
+    // } else {
+    //   navigate("/student/home");
+    // }
+    navigate("/dashboard/home");
   };
 
   const goSignup = () => navigate("/signup");
