@@ -5,6 +5,9 @@ import SignupChoice from "./pages/SignupChoice";
 import SignupAdmin from "./pages/SignupAdmin";
 import SignupStudent from "./pages/SignupStudent";
 import Verify from "./pages/VerifyEmail";
+import AdminHome from "./pages/AdminHome";
+import StudentHome from "./pages/StudentHome";
+import CampDetail from "./pages/CampDetail";
 
 function RoutedHome() {
   const navigate = useNavigate();
@@ -21,6 +24,9 @@ export default function App() {
         <Route path="/signup/admin" element={<SignupAdmin />} />
         <Route path="/signup/student" element={<SignupStudent />} />
         <Route path="/verify" element={<Verify />} />
+        <Route path="/admin/home" element={<AdminHome />} />
+        <Route path="/student/home" element={<StudentHome />} />
+        <Route path="/camp/:id" element={<CampDetail />} />
       </Routes>
     </BrowserRouter>
   );

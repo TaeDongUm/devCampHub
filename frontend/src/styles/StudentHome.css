@@ -1,0 +1,138 @@
+.sh {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 32px 16px;
+}
+.sh-wrap {
+  width: 100%;
+  max-width: 1080px;
+}
+
+/* 그라데이션 헤더 */
+.sh-hero {
+  background: linear-gradient(135deg, #5cd4ff 0%, #8a4dff 55%, #6c47ff 100%);
+  color: #fff;
+  border-radius: 24px;
+  padding: 28px 28px 16px;
+  box-shadow: 0 6px 24px rgba(20, 20, 20, 0.25);
+}
+.sh-title {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 900;
+}
+.sh-sub {
+  margin: 6px 0 14px;
+  opacity: 0.95;
+}
+.sh-tabs {
+  display: flex;
+  gap: 8px;
+}
+.sh-tabs button {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.sh-tabs button.on {
+  background: #fff;
+  color: #111;
+}
+
+/* 카드/그리드 */
+.sh-card {
+  background: #fff;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+}
+.sh-card-title {
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+.sh-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+.stat {
+  grid-column: span 4;
+  text-align: center;
+}
+.stat .k {
+  color: #666;
+  font-size: 13px;
+}
+.stat .v {
+  font-size: 28px;
+  font-weight: 800;
+}
+.wide {
+  grid-column: 1 / -1;
+}
+.todo {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* 캠프 리스트 */
+.sh-camps {
+  margin-top: 16px;
+}
+.camp-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.camp-item {
+  background: #fff;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 16px;
+  padding: 14px;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.camp-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+.camp-name {
+  font-weight: 800;
+}
+.camp-meta {
+  color: #555;
+  font-size: 14px;
+  margin-top: 4px;
+}
+.camp-stat {
+  margin-top: 8px;
+  color: #333;
+  font-size: 14px;
+}
+
+.join-area {
+  margin-top: 12px;
+}
+.btn.outline {
+  background: transparent;
+  border: 2px solid #111;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: 800;
+}
+
+/* 알림 */
+.sh-alerts {
+  margin-top: 16px;
+}
+.alert-list {
+  margin: 0;
+  padding-left: 18px;
+}
