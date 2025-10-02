@@ -40,7 +40,7 @@ export default function Login() {
       <section className="login-card">
         <h1 className="login-title">로그인</h1>
 
-        <form className="login-form" onSubmit={onSubmit}>
+        <form className="login-form" onSubmit={onSubmit} noValidate>
           <input
             type="text"
             placeholder="아이디"
