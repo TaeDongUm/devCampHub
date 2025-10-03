@@ -34,7 +34,7 @@ export default function Login() {
     navigate("/dashboard/home");
   };
 
-  const goSignup = () => navigate("/signup");
+  const goSignup = () => navigate("/signupchoice");
 
   return (
     <main className="login">

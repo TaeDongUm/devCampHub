@@ -8,7 +8,7 @@ import Verify from "./pages/VerifyEmail";
 import AdminHome from "./pages/AdminHome";
 import StudentHome from "./pages/StudentHome";
 import CampDetail from "./pages/CampDetail";
-import DashBoardHome from "./pages/DashboardHome";
+import DashBoardHome from "./pages/DashBoardHome";
 import Settings from "./pages/Settings";
 
 function RoutedHome() {
