@@ -310,6 +310,50 @@
   align-items: center;
 }
 
+.board thead th.th-sort {
+  cursor: pointer;
+  user-select: none;
+}
+.sort-ic {
+  opacity: 0.6;
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+/* 페이지 크기 셀렉터 라벨 */
+.pager .page-size {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 10px;
+  font-size: 14px;
+}
+
+/* 코드 복사/재발급 버튼 (설정 모달 상단 줄배치) */
+.code-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.code-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.btn.mini {
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+/* 읽기 전용 정보 */
+.view-readonly {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 @media (max-width: 840px) {
   .nav {
     grid-template-columns: 1fr;
