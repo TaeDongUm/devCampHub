@@ -4,7 +4,7 @@ import "../styles/DashBoardHome.css";
 
 type Role = "admin" | "student";
 
-type Camp = {
+export type Camp = {
   id: string;
   name: string;
   institution: string;
