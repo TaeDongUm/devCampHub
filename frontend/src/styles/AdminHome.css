@@ -1,0 +1,160 @@
+/* 레이아웃/헤더(그라데이션) */
+.ah {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 32px 16px;
+}
+.ah-wrap {
+  width: 100%;
+  max-width: 1080px;
+}
+
+.ah-hero {
+  background: linear-gradient(135deg, #6c47ff 0%, #8a4dff 55%, #5cd4ff 100%);
+  color: #fff;
+  border-radius: 24px;
+  padding: 28px 28px 16px;
+  box-shadow: 0 6px 24px rgba(20, 20, 20, 0.25);
+}
+.ah-title {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 900;
+}
+.ah-sub {
+  margin: 6px 0 14px;
+  opacity: 0.95;
+}
+
+/* 상단 탭 */
+.ah-tabs {
+  display: flex;
+  gap: 8px;
+}
+.ah-tabs button {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.ah-tabs button.on {
+  background: #fff;
+  color: #111;
+}
+
+/* 공용 카드 */
+.ah-card {
+  background: #fff;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+}
+.ah-card-title {
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+/* 대시보드 그리드 */
+.ah-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+.stat {
+  grid-column: span 3;
+  text-align: center;
+}
+.stat .k {
+  color: #666;
+  font-size: 13px;
+}
+.stat .v {
+  font-size: 28px;
+  font-weight: 800;
+}
+.wide {
+  grid-column: 1 / -1;
+}
+.ah-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.btn.ghost {
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.btn.outline {
+  background: transparent;
+  border: 2px solid #111;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: 800;
+}
+
+/* 캠프 리스트 */
+.ah-camps {
+  margin-top: 16px;
+}
+.camp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.camp-item {
+  background: #fff;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 16px;
+  padding: 14px;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.camp-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+.camp-name {
+  font-weight: 800;
+}
+.camp-meta {
+  color: #555;
+  font-size: 14px;
+  margin-top: 4px;
+}
+.camp-stats {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: #333;
+}
+
+.ah-create {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tip {
+  color: #666;
+  font-size: 13px;
+}
+
+/* 알림 */
+.ah-alerts {
+  margin-top: 16px;
+}
+.alert-list {
+  margin: 0;
+  padding-left: 18px;
+}
