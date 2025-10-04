@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import "../styles/CampDetail.css";
-import ChatPage, { type Msg, type ExtraValues } from "./ChatPage";
-import type { Camp } from "./DashBoardHome"; // DashBoardHome에서 Camp를 export 했다고 가정
+import ChatPage from "./ChatPage";
+import type { Camp } from "./DashBoardHome";
 
 type Channel = "notice" | "qna" | "resources" | "lounge" | "study" | "live" | "mogakco";
 
@@ -38,85 +38,6 @@ export default function CampDetail() {
     }),
     []
   );
-
-  // ===== 채널별 확장 입력/전송 후처리 (자료/라운지/공부질문) =====
-  const resourcesRenderExtra = (
-    extraValues: ExtraValues,
-    setExtraValues: React.Dispatch<React.SetStateAction<ExtraValues>>
-  ) => (
-    <input
-      className="ipt"
-      placeholder="자료 링크 (https://...)"
-      value={(extraValues.link as string) || ""}
-      onChange={(e) => setExtraValues((prev) => ({ ...prev, link: e.target.value }))}
-    />
-  );
-  const resourcesOnSend = (msg: Msg, extra: ExtraValues): Msg => {
-    const link = typeof extra.link === "string" ? extra.link.trim() : "";
-    return { ...msg, extra: { ...(msg.extra || {}), ...(link ? { link } : {}) } };
-  };
-
-  const loungeRenderExtra = (
-    _extraValues: ExtraValues,
-    setExtraValues: React.Dispatch<React.SetStateAction<ExtraValues>>
-  ) => (
-    <input
-      type="file"
-      accept="image/*"
-      onChange={(e) => {
-        const f = e.currentTarget.files?.[0];
-        if (!f) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = typeof reader.result === "string" ? reader.result : "";
-          setExtraValues((prev) => ({ ...prev, image: dataUrl }));
-        };
-        reader.readAsDataURL(f);
-        e.currentTarget.value = "";
-      }}
-    />
-  );
-  const loungeOnSend = (msg: Msg, extra: ExtraValues): Msg => {
-    const image = typeof extra.image === "string" ? extra.image : undefined;
-    return { ...msg, extra: { ...(msg.extra || {}), ...(image ? { image } : {}) } };
-  };
-
-  const studyRenderExtra = (
-    extraValues: ExtraValues,
-    setExtraValues: React.Dispatch<React.SetStateAction<ExtraValues>>
-  ) => (
-    <div className="study-extra" style={{ display: "grid", gap: 6 }}>
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => {
-          const f = e.currentTarget.files?.[0];
-          if (!f) return;
-          const reader = new FileReader();
-          reader.onload = () => {
-            const dataUrl = typeof reader.result === "string" ? reader.result : "";
-            setExtraValues((prev) => ({ ...prev, image: dataUrl }));
-          };
-          reader.readAsDataURL(f);
-          e.currentTarget.value = "";
-        }}
-      />
-      <textarea
-        className="ipt ta"
-        placeholder="코드블럭을 붙여넣거나 작성하세요"
-        value={(extraValues.code as string) || ""}
-        onChange={(e) => setExtraValues((prev) => ({ ...prev, code: e.target.value }))}
-      />
-    </div>
-  );
-  const studyOnSend = (msg: Msg, extra: ExtraValues): Msg => {
-    const image = typeof extra.image === "string" ? extra.image : undefined;
-    const code = typeof extra.code === "string" ? extra.code : undefined;
-    return {
-      ...msg,
-      extra: { ...(msg.extra || {}), ...(image ? { image } : {}), ...(code ? { code } : {}) },
-    };
-  };
 
   // 라우팅 이동은 필요한 곳(출석/설정)만 유지
   const goSettings = () => nav("/settings");
@@ -207,34 +128,19 @@ export default function CampDetail() {
 
             {/* 채팅형 채널 */}
             {ch === "notice" && (
-              <ChatPage channel={`chat:notice:${campId}`} placeholder="공지사항을 입력하세요" />
+              <ChatPage channel={`chat:notice:${campId}`} placeholder="메시지 보내기" />
             )}
             {ch === "qna" && (
-              <ChatPage channel={`chat:qna:${campId}`} placeholder="질문을 입력하세요" />
+              <ChatPage channel={`chat:qna:${campId}`} placeholder="메시지 보내기" />
             )}
             {ch === "resources" && (
-              <ChatPage
-                channel={`chat:resources:${campId}`}
-                placeholder="자료 설명을 입력하세요"
-                renderExtra={resourcesRenderExtra}
-                onSend={resourcesOnSend}
-              />
+              <ChatPage channel={`chat:resources:${campId}`} placeholder="메시지 보내기" />
             )}
             {ch === "lounge" && (
-              <ChatPage
-                channel={`chat:lounge:${campId}`}
-                placeholder="일상 메시지를 입력하세요"
-                renderExtra={loungeRenderExtra}
-                onSend={loungeOnSend}
-              />
+              <ChatPage channel={`chat:lounge:${campId}`} placeholder="메시지 보내기" />
             )}
             {ch === "study" && (
-              <ChatPage
-                channel={`chat:study:${campId}`}
-                placeholder="공부 질문을 입력하세요"
-                renderExtra={studyRenderExtra}
-                onSend={studyOnSend}
-              />
+              <ChatPage channel={`chat:study:${campId}`} placeholder="메시지 보내기" />
             )}
 
             {/* 실시간 강의/모각코도 동일 영역에서 표시 */}
