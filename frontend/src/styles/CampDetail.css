@@ -334,3 +334,50 @@
   max-width: 260px;
   display: block;
 }
+
+/* 모달 (DashboardHome.css와 통일) */
+.modal-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 40;
+}
+.modal {
+  width: min(800px, 96vw);
+  background: #0f141a;
+  border: 1px solid #1f2732;
+  border-radius: 16px;
+  padding: 16px;
+  color: #e6e8ea;
+}
+.form {
+  display: grid;
+  gap: 8px;
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+.modal-sub {
+  color: #9fb0c0;
+  margin: 6px 0 10px;
+}
+.chip {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: #e6e8ea;
+  border-radius: 999px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.chip.on {
+  background: #1a222c;
+  border-color: #3b7cff;
+  color: #fff;
+}
