@@ -1,74 +1,94 @@
+// src/pages/Mogakco.tsx  (신규)
 import React, { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import ChatPanel from "../pages/ChatPanel";
+import ChatPage from "./ChatPage";
 
-type Stream = { id: string; owner: string; title: string; on: boolean };
+type Tab = "WEB" | "ANDROID" | "IOS";
+type Stream = {
+  id: string;
+  owner: string;
+  title: string;
+  track: Tab;
+  viewers: number;
+  startedAt: number;
+};
 
-export default function Mogakco() {
-  const { campId } = useParams();
-  const nickname = localStorage.getItem("nickname") || "익명";
-  const key = `mogakco:${campId}`;
+export default function Mogakco({
+  campId,
+}: // isStreaming,
+// onOpenCheckin,
+// onStopStreaming,
+{
+  campId: string;
+  isStreaming: boolean;
+  onOpenCheckin: () => void;
+  onStopStreaming: () => void;
+}) {
+  const myTrack = (localStorage.getItem("profile:track") as Tab) || "WEB";
+  const [tab, setTab] = useState<Tab>(myTrack);
 
-  const [streams, setStreams] = useState<Stream[]>(() =>
-    JSON.parse(localStorage.getItem(key) || "[]")
+  const all = (JSON.parse(localStorage.getItem(`streams:${campId}`) || "[]") as Stream[]).sort(
+    (a, b) => b.startedAt - a.startedAt
   );
+  const list = useMemo(() => all.filter((s) => s.track === tab), [all, tab]);
 
-  const myId = useMemo(() => {
-    const id = localStorage.getItem("me:id") || `me-${Math.random().toString(36).slice(2, 7)}`;
-    localStorage.setItem("me:id", id);
-    return id;
-  }, []);
-
-  const start = () => {
-    const title = prompt("방송 제목을 입력하세요", `${nickname}의 모각코`);
-    if (!title) return;
-    const me: Stream = { id: myId, owner: nickname, title, on: true };
-    const next = [...streams.filter((s) => s.id !== myId), me];
-    setStreams(next);
-    localStorage.setItem(key, JSON.stringify(next));
-  };
-
-  const stop = () => {
-    const next = streams.map((s) => (s.id === myId ? { ...s, on: false } : s));
-    setStreams(next);
-    localStorage.setItem(key, JSON.stringify(next));
-  };
+  // 시청 모달
+  const [watch, setWatch] = useState<Stream | null>(null);
 
   return (
-    <section className="room">
-      <div className="room-head">
-        <h2>👥 모각코</h2>
-        <div className="room-actions">
-          <button className="btn" onClick={start}>
-            내 방송 시작
+    <div>
+      {/* 탭 */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        {(["WEB", "ANDROID", "IOS"] as Tab[]).map((t) => (
+          <button key={t} className={`chip ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>
+            {t}
           </button>
-          <button className="btn ghost" onClick={stop}>
-            내 방송 종료
-          </button>
-        </div>
-      </div>
-
-      <div className="mogak-grid">
-        {streams.length === 0 && (
-          <div className="empty">아직 방송이 없습니다. 첫 방송을 시작해보세요!</div>
-        )}
-        {streams.map((s) => (
-          <div key={s.id} className={`mogak-card ${s.on ? "on" : "off"}`}>
-            <div className="mogak-thumb">{s.on ? "ON AIR" : "OFF"}</div>
-            <div className="mogak-meta">
-              <div className="mogak-title">{s.title}</div>
-              <div className="muted">by {s.owner}</div>
-            </div>
-          </div>
         ))}
       </div>
 
-      <div className="room-split">
-        <div className="room-video">
-          <div className="video-surface on">내 화면(예시)</div>
+      {/* 방송 카드 목록 */}
+      {list.length === 0 ? (
+        <div className="empty">현재 실시간 방송 중인 분들이 없습니다.</div>
+      ) : (
+        <div className="mine-grid" style={{ gridTemplateColumns: "repeat(12, 1fr)" }}>
+          {list.map((s) => (
+            <div
+              key={s.id}
+              className="mine-card"
+              style={{ gridColumn: "span 4", cursor: "pointer" }}
+              onClick={() => setWatch(s)}
+            >
+              <div className="video-surface" style={{ height: 120, marginBottom: 8 }}>
+                🎥 {s.title}
+              </div>
+              <div className="meta">
+                <strong>{s.owner}</strong> · {s.track}
+              </div>
+              <div className="meta">{s.viewers}명 시청 중</div>
+            </div>
+          ))}
         </div>
-        <ChatPanel channel={`chat:mogakco:${campId}`} placeholder="모각코 채팅에 메시지…" />
-      </div>
-    </section>
+      )}
+
+      {/* 시청 모달 */}
+      {watch && (
+        <div className="modal-bg" onClick={() => setWatch(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{watch.title}</h3>
+            <div className="video-surface on" style={{ height: 320 }}>
+              🙋 {watch.owner} 님 방송 (가상 플레이어)
+            </div>
+            <div className="modal-sub">
+              {watch.track} · {watch.viewers}명 시청 중
+            </div>
+            <ChatPage channel={`chat:mogakco:${campId}:${watch.id}`} placeholder="채팅 입력…" />
+            <div className="modal-actions">
+              <button className="btn ghost" onClick={() => setWatch(null)}>
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
