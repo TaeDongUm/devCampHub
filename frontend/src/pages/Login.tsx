@@ -16,9 +16,7 @@ export default function Login() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const found = dummyUsers.find(
-      (u) => u.username === identifier && u.password === password
-    );
+    const found = dummyUsers.find((u) => u.username === identifier && u.password === password);
 
     if (!found) {
       setError("아이디 또는 비밀번호가 올바르지 않습니다.");
@@ -56,7 +54,9 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <button type="submit" className="btn-primary">로그인</button>
+          <button type="submit" className="btn-primary">
+            로그인
+          </button>
         </form>
 
         {error && <div className="login-error">{error}</div>}
@@ -64,7 +64,9 @@ export default function Login() {
         <div className="login-tip">
           아이디가 없으신가요? <strong>회원가입 버튼을 누르세요!</strong>
         </div>
-        <button className="btn-secondary" onClick={goSignup}>회원가입</button>
+        <button className="btn-secondary" onClick={goSignup}>
+          회원가입
+        </button>
       </section>
     </main>
   );
