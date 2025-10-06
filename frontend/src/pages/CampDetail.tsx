@@ -3,7 +3,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import "../styles/CampDetail.css";
 import ChatPage from "./ChatPage";
-
+// import HeroCardIllustrated from "../components/HeroCardIllustrated";
+import HeroCard from "../components/HeroCard";
 /* ===== Types ===== */
 type Channel = "notice" | "qna" | "resources" | "lounge" | "study" | "live" | "mogakco";
 type Track = "WEB" | "ANDROID" | "IOS";
@@ -227,11 +228,12 @@ export default function CampDetail() {
         </aside>
 
         <main className="camp-main">
-          <div className="home-hero gradient">
-            <h1>{campTitle}</h1>
-            <p className="muted">출석부 관리부터 소통까지, 이 캠프에서 함께 학습해요.</p>
-          </div>
-
+          {/* <HeroCardIllustrated /> */}
+          <HeroCard
+            title="devCampHub"
+            subtitle="출석, 소통, 방송을 한 곳에서"
+            className="mb-4" // 선택: 여백 필요하면 사용
+          />
           <section className="switch-area">
             <div className="chat-room-head">
               <h3>
