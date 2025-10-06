@@ -1,6 +1,8 @@
 package devcamphub.backend.controller;
 
 import devcamphub.backend.domain.User;
+import devcamphub.backend.dto.LoginRequest;
+import devcamphub.backend.dto.LoginResponse;
 import devcamphub.backend.dto.RegistrationRequest;
 import devcamphub.backend.service.UserService;
 import jakarta.validation.Valid;
@@ -30,5 +32,9 @@ public class AuthController {
                 .body("회원가입이 성공적으로 완료되었습니다.");
     }
 
-    // 앞으로 여기에 /api/auth/login 엔드포인트 등이 추가될 예정입니다.
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        LoginResponse loginResponse = userService.login(request);
+        return ResponseEntity.ok(loginResponse);
+    }
 }
