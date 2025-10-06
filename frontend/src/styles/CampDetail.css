@@ -381,3 +381,29 @@
   border-color: #3b7cff;
   color: #fff;
 }
+
+.banner-sub {
+  font-size: 20px;
+  font-weight: 500;
+  opacity: 0.9;
+  margin-bottom: 10px;
+}
+
+/* 메인 배너 */
+.home-banner {
+  background: linear-gradient(135deg, #662ee9 100%, #7a3ffc 70%);
+  color: #fff;
+  border-radius: 24px;
+  padding: 20px 20px;
+  text-align: center;
+  margin: 0 auto 32px;
+  width: 100%;
+  max-width: 960px;
+  box-shadow: 0 6px 24px rgba(103, 47, 236, 0.25);
+}
+
+.banner-title {
+  font-size: 48px;
+  font-weight: 800;
+  margin: 0;
+}
