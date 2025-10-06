@@ -1,251 +1,569 @@
-import React, { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+// src/pages/CampDetail.tsx
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import "../styles/CampDetail.css";
+import ChatPage from "./ChatPage";
+// import HeroCardIllustrated from "../components/HeroCardIllustrated";
+import HeroCard from "../components/HeroCard";
+/* ===== Types ===== */
+type Channel = "notice" | "qna" | "resources" | "lounge" | "study" | "live" | "mogakco";
+type Track = "WEB" | "ANDROID" | "IOS";
+type Role = "ADMIN" | "STUDENT";
 
-type Notice = { id: string; text: string; when: string };
-type Qa = { id: string; question: string; answer?: string };
-type Mission = { id: string; title: string; desc: string };
-type ChatMsg = { id: string; who: string; text: string };
+type StreamCard = {
+  id: string;
+  title: string;
+  nickname: string;
+  avatar?: string;
+  track: Track;
+  viewers: number;
+  ownerId: string;
+  type: "LIVE" | "MOGAKCO";
+};
 
-const initialNotices: Notice[] = [
-  { id: "n1", text: "오전 10시 코어타임 시작합니다.", when: "오늘 09:55" },
-  { id: "n2", text: "내일은 네트워크 실습 진행", when: "어제 18:10" },
-];
+type MyStreamMeta = {
+  title: string;
+  micOn: boolean;
+  camOn: boolean;
+  screenOn: boolean;
+  track: Track;
+};
 
-const initialQa: Qa[] = [
-  { id: "q1", question: "과제 제출 마감은 언제인가요?", answer: "이번 주 금요일 18:00 입니다." },
-  { id: "q2", question: "녹화 업로드가 조금 늦어요.", answer: "인코딩 후 자동 업로드됩니다." },
-];
+type ToggleKey = keyof Pick<MyStreamMeta, "micOn" | "camOn" | "screenOn">;
 
-const initialMissions: Mission[] = [
-  { id: "m1", title: "DNS 정리", desc: "DNS 동작 방식 개념 정리해서 공유" },
-  { id: "m2", title: "HTTP 실습", desc: "캡쳐 도구로 요청/응답 분석" },
-];
-
-const initialChat: ChatMsg[] = [
-  { id: "c1", who: "운영", text: "안녕하세요. 오늘은 라운드 #3 시작합니다." },
-  { id: "c2", who: "민수", text: "넵! 잘 들립니다." },
-];
-
+/* ===== Component ===== */
 export default function CampDetail() {
-  const { id } = useParams(); // /camp/:id
-  const [sideTab, setSideTab] = useState<"공지사항" | "Q&A" | "미션 공유" | "자유 채팅">("공지사항");
-  const [topTab, setTopTab] = useState<"출석" | "녹화" | "아카이브">("출석");
+  const { campId } = useParams();
+  const nav = useNavigate();
+  const [sp, setSp] = useSearchParams();
 
-  // 더미 상태
-  const [notices, setNotices] = useState<Notice[]>(initialNotices);
-  const [qa, setQa] = useState<Qa[]>(initialQa);
-  const [missions, setMissions] = useState<Mission[]>(initialMissions);
-  const [chat, setChat] = useState<ChatMsg[]>(initialChat);
+  // Role 정규화(대/소문자 섞여 저장되어도 안전)
+  const rawRole = (localStorage.getItem("role") || "STUDENT").toUpperCase();
+  const role: Role = rawRole === "ADMIN" ? "ADMIN" : "STUDENT";
 
-  // 입력 상태
-  const [noticeText, setNoticeText] = useState("");
-  const [qText, setQText] = useState("");
-  const [aText, setAText] = useState("");
-  const [mTitle, setMTitle] = useState("");
-  const [mDesc, setMDesc] = useState("");
-  const [chatText, setChatText] = useState("");
+  const myNickname = localStorage.getItem("nickname") || "익명";
+  const myAvatar = localStorage.getItem("avatar") || "👩‍💻";
+  const myTrack: Track = (localStorage.getItem("profile:track") as Track) || "WEB";
 
-  const campName = useMemo(() => {
-    if (!id) return "캠프";
-    if (id.includes("net")) return "네트워크 스터디 캠프";
-    if (id.includes("fe")) return "프론트엔드 심화 캠프";
-    return "캠프";
-  }, [id]);
+  // 채널/탭
+  const initialCh = (sp.get("ch") as Channel) || "notice";
+  const [ch, setCh] = useState<Channel>(initialCh);
+  useEffect(() => {
+    const next = new URLSearchParams(sp);
+    next.set("ch", ch);
+    setSp(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ch]);
 
-  // 간단한 핸들러 (더미)
-  const addNotice = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!noticeText.trim()) return;
-    setNotices((prev) => [{ id: String(Date.now()), text: noticeText.trim(), when: "방금" }, ...prev]);
-    setNoticeText("");
+  const [tab, setTab] = useState<Track>("WEB");
+
+  // 캠프명
+  const campTitle = localStorage.getItem(`camp:${campId}:name`) || "devCampHub";
+
+  // 상단 버튼
+  const goMyPage = () => nav("/mypage");
+  const logout = () => {
+    localStorage.removeItem("token");
+    nav("/login");
   };
 
-  const addQuestion = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!qText.trim()) return;
-    setQa((prev) => [{ id: String(Date.now()), question: qText.trim() }, ...prev]);
-    setQText("");
+  // 내 방송 상태
+  const [isStreaming, setStreaming] = useState(false);
+  const [streamType, setStreamType] = useState<"LIVE" | "MOGAKCO">("MOGAKCO");
+  const [meta, setMeta] = useState<MyStreamMeta>({
+    title: "",
+    micOn: false,
+    camOn: true,
+    screenOn: true,
+    track: myTrack,
+  });
+
+  const [viewersCount, setViewersCount] = useState<number>(0);
+  const [participants, setParticipants] = useState<string[]>([]); // 별명 목록
+
+  // 체크인/강의하기 모달
+  const [showCheckin, setShowCheckin] = useState(false);
+
+  // 시작/종료
+  const beginStreaming = (next: MyStreamMeta, type: "LIVE" | "MOGAKCO") => {
+    setMeta(next);
+    setStreamType(type);
+    setStreaming(true);
+    // TODO(BE): START API & presence 구독 시작 → setViewersCount/setParticipants
+  };
+  const endStreaming = () => {
+    // TODO(BE): STOP API
+    setStreaming(false);
+    setViewersCount(0);
+    setParticipants([]);
   };
 
-  const answerQuestion = (qid: string) => {
-    if (!aText.trim()) return;
-    setQa((prev) => prev.map((q) => (q.id === qid ? { ...q, answer: aText.trim() } : q)));
-    setAText("");
-  };
+  // 토글
+  const toggle = (k: ToggleKey) => setMeta((prev) => ({ ...prev, [k]: !prev[k] }));
 
-  const addMission = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!mTitle.trim()) return;
-    setMissions((prev) => [{ id: String(Date.now()), title: mTitle.trim(), desc: mDesc.trim() }, ...prev]);
-    setMTitle(""); setMDesc("");
-  };
+  // 썸네일 데이터 (실제는 서버)
+  const mockStreams: StreamCard[] = [
+    {
+      id: "L1",
+      type: "LIVE",
+      title: "[BE] 인증 구현 & 배포",
+      nickname: "J023",
+      avatar: "🧑‍🏫",
+      track: "WEB",
+      viewers: 152,
+      ownerId: "admin-1",
+    },
+    {
+      id: "S1",
+      type: "MOGAKCO",
+      title: "(방송 제목)",
+      nickname: "j999",
+      avatar: "🙂",
+      track: "WEB",
+      viewers: 2,
+      ownerId: "stu-1",
+    },
+  ];
+  const cards = useMemo(() => {
+    const type = ch === "live" ? "LIVE" : ch === "mogakco" ? "MOGAKCO" : null;
+    if (!type) return [];
+    return mockStreams.filter((s) => s.type === type && s.track === tab);
+  }, [ch, tab]);
 
-  const sendChat = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatText.trim()) return;
-    setChat((prev) => [...prev, { id: String(Date.now()), who: "나", text: chatText.trim() }]);
-    setChatText("");
-  };
+  /* ===== 핵심 가시성 로직 =====
+     - 내 방송 화면은 "내가 방송 중"이고
+       채널과 방송 종류가 서로 일치할 때만 보인다.
+       학생이 모각코 방송 중 → 모각코 탭에서만 노출
+       관리자가 라이브 강의 중 → 실시간 강의 탭에서만 노출
+  */
+  const isMyStreamVisible =
+    isStreaming &&
+    ((streamType === "MOGAKCO" && role === "STUDENT" && ch === "mogakco") ||
+      (streamType === "LIVE" && role === "ADMIN" && ch === "live"));
+
+  // 상단 버튼 노출 조건(동시 노출 방지)
+  const showTeach = role === "ADMIN" && ch === "live" && !isStreaming;
+  const showCheckinBtn = role === "STUDENT" && ch === "mogakco" && !isStreaming;
+  const showCheckout = isMyStreamVisible; // 현재 탭에서 내 방송을 볼 때만 체크아웃 노출
+
+  // 내 방송 중이면 상단 탭(노란 박스) 숨김
+  const hideHeaderTabs = isMyStreamVisible;
 
   return (
     <div className="camp">
-      {/* 좌측 사이드바 */}
-      <aside className="camp-side">
-        <div className="side-head">캠프 메뉴</div>
-        <ul className="side-list">
-          {(["공지사항", "Q&A", "미션 공유", "자유 채팅"] as const).map((t) => (
-            <li key={t} className={sideTab === t ? "on" : ""} onClick={() => setSideTab(t)}>
-              {t}
-            </li>
-          ))}
-        </ul>
-      </aside>
-
-      {/* 메인 */}
-      <main className="camp-main">
-        {/* 상단 헤더 + 가로 탭 */}
-        <header className="camp-hero">
-          <div className="camp-title">{campName}</div>
-          <div className="camp-sub">출석 · 방송/채팅 · 녹화/아카이브</div>
-          <div className="top-tabs">
-            {(["출석", "녹화", "아카이브"] as const).map((t) => (
-              <button key={t} className={topTab === t ? "on" : ""} onClick={() => setTopTab(t)}>
-                {t}
-              </button>
-            ))}
-          </div>
-        </header>
-
-        {/* 좌측 세로탭 콘텐츠 */}
-        <section className="panel">
-          <div className="panel-title">{sideTab}</div>
-
-          {sideTab === "공지사항" && (
-            <>
-              <form className="row" onSubmit={addNotice}>
-                <input className="input" placeholder="공지 작성..." value={noticeText} onChange={(e) => setNoticeText(e.target.value)} />
-                <button className="btn">등록</button>
-              </form>
-              <ul className="notice-list">
-                {notices.map((n) => (
-                  <li key={n.id}>
-                    <div className="n-text">{n.text}</div>
-                    <div className="n-when">{n.when}</div>
-                  </li>
-                ))}
-              </ul>
-            </>
+      <header className="camp-top">
+        <div className="camp-title" onClick={() => nav("/dash")}>
+          devCampHub / <span className="camp-crumb">{campTitle}</span>
+        </div>
+        <div className="camp-actions">
+          {showTeach && (
+            <button
+              className="btn sm"
+              onClick={() => {
+                setStreamType("LIVE");
+                setShowCheckin(true);
+              }}
+            >
+              강의하기
+            </button>
           )}
-
-          {sideTab === "Q&A" && (
-            <>
-              <form className="row" onSubmit={addQuestion}>
-                <input className="input" placeholder="질문 남기기..." value={qText} onChange={(e) => setQText(e.target.value)} />
-                <button className="btn">질문</button>
-              </form>
-              <ul className="qa-list">
-                {qa.map((q) => (
-                  <li key={q.id} className="qa-item">
-                    <div className="q">Q. {q.question}</div>
-                    <div className="a">{q.answer ? `A. ${q.answer}` : <em>답변 대기</em>}</div>
-                    <div className="answer-row">
-                      <input className="input" placeholder="운영진 답변..." value={aText} onChange={(e) => setAText(e.target.value)} />
-                      <button className="btn ghost" onClick={() => answerQuestion(q.id)} type="button">답변 등록</button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </>
+          {showCheckinBtn && (
+            <button
+              className="btn sm"
+              onClick={() => {
+                setStreamType("MOGAKCO");
+                setShowCheckin(true);
+              }}
+            >
+              체크인
+            </button>
           )}
-
-          {sideTab === "미션 공유" && (
-            <>
-              <form className="col" onSubmit={addMission}>
-                <input className="input" placeholder="미션 제목" value={mTitle} onChange={(e) => setMTitle(e.target.value)} />
-                <textarea className="textarea" placeholder="내용/링크 등" value={mDesc} onChange={(e) => setMDesc(e.target.value)} />
-                <button className="btn">공유</button>
-              </form>
-              <ul className="mission-list">
-                {missions.map((m) => (
-                  <li key={m.id} className="mission-item">
-                    <div className="m-title">{m.title}</div>
-                    <div className="m-desc">{m.desc || "설명 없음"}</div>
-                  </li>
-                ))}
-              </ul>
-            </>
+          {showCheckout && (
+            <button className="btn sm danger" onClick={endStreaming}>
+              체크아웃
+            </button>
           )}
+          <button className="btn sm" onClick={goMyPage}>
+            마이페이지
+          </button>
+          <button className="btn sm ghost" onClick={logout}>
+            로그아웃
+          </button>
+        </div>
+      </header>
 
-          {sideTab === "자유 채팅" && (
-            <div className="chat">
-              <div className="chat-log">
-                {chat.map((c) => (
-                  <div key={c.id} className={`chat-item ${c.who === "나" ? "me" : ""}`}>
-                    <span className="who">{c.who}</span>
-                    <span className="text">{c.text}</span>
+      <div className="camp-body">
+        <aside className="camp-aside">
+          <nav className="aside-nav">
+            <div className="aside-section">채널</div>
+            <SideLink
+              label="📢 공지사항"
+              active={ch === "notice"}
+              onClick={() => setCh("notice")}
+            />
+            <SideLink label="❓ Q&A" active={ch === "qna"} onClick={() => setCh("qna")} />
+            <SideLink
+              label="📂 공유할 학습자료"
+              active={ch === "resources"}
+              onClick={() => setCh("resources")}
+            />
+            <SideLink
+              label="💬 라운지(잡담/자유)"
+              active={ch === "lounge"}
+              onClick={() => setCh("lounge")}
+            />
+            <SideLink label="🧠 공부 질문" active={ch === "study"} onClick={() => setCh("study")} />
+            <div className="aside-section">실시간</div>
+            <SideLink
+              label="🎥 실시간 강의(관리자)"
+              active={ch === "live"}
+              onClick={() => setCh("live")}
+            />
+            <SideLink
+              label="👥 모각코"
+              active={ch === "mogakco"}
+              onClick={() => setCh("mogakco")}
+            />
+          </nav>
+        </aside>
+
+        <main className="camp-main">
+          {/* <HeroCardIllustrated /> */}
+          <HeroCard
+            title="devCampHub"
+            subtitle="출석, 소통, 방송을 한 곳에서"
+            className="mb-4" // 선택: 여백 필요하면 사용
+          />
+          <section className="switch-area">
+            <div className="chat-room-head">
+              <h3>
+                {ch === "mogakco" ? "모각코" : ch === "live" ? "실시간 강의" : ch.toUpperCase()}
+              </h3>
+            </div>
+
+            {/* 일반 채널 */}
+            {["notice", "qna", "resources", "lounge", "study"].includes(ch) && (
+              <ChatPage channel={`chat:${ch}:${campId}`} placeholder="메시지 보내기" />
+            )}
+
+            {/* 실시간 허브 */}
+            {(ch === "live" || ch === "mogakco") && (
+              <div className="board" style={{ padding: 16 }}>
+                {!hideHeaderTabs && (
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    {(["WEB", "ANDROID", "IOS"] as Track[]).map((t) => (
+                      <button
+                        key={t}
+                        className={`chip ${tab === t ? "on" : ""}`}
+                        onClick={() => setTab(t)}
+                      >
+                        {t}
+                      </button>
+                    ))}
                   </div>
-                ))}
+                )}
+
+                {isMyStreamVisible ? (
+                  <MyBroadcastView
+                    meta={meta}
+                    nickname={myNickname}
+                    avatar={myAvatar}
+                    viewers={viewersCount}
+                    participants={participants}
+                    onToggle={toggle}
+                    onCheckout={endStreaming}
+                  />
+                ) : (
+                  <>
+                    {cards.length === 0 ? (
+                      <div className="empty" style={{ padding: 20 }}>
+                        {ch === "live"
+                          ? "현재 방송이 없네요.."
+                          : "현재 실시간 방송 중인 분들이 없습니다."}
+                      </div>
+                    ) : (
+                      <div className="mine-grid" style={{ gridTemplateColumns: "repeat(12,1fr)" }}>
+                        {cards.map((s) => (
+                          <div key={s.id} className="mine-card" style={{ gridColumn: "span 4" }}>
+                            <div
+                              className="video-surface"
+                              style={{
+                                height: 140,
+                                marginBottom: 8,
+                                display: "grid",
+                                placeItems: "center",
+                              }}
+                            />
+                            <div className="meta">
+                              <strong>{s.title}</strong>
+                            </div>
+                            <div
+                              className="meta"
+                              style={{ display: "flex", gap: 6, alignItems: "center" }}
+                            >
+                              <span style={{ fontSize: 20 }}>{s.avatar || "🙂"}</span>
+                              <span>{s.nickname}</span> · <span>{s.track}</span> ·{" "}
+                              <span>{s.viewers}명 시청 중</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-              <form className="row" onSubmit={sendChat}>
-                <input className="input" placeholder="메시지 입력..." value={chatText} onChange={(e) => setChatText(e.target.value)} />
-                <button className="btn">보내기</button>
-              </form>
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        </main>
+      </div>
 
-        {/* 상단 가로탭 콘텐츠 */}
-        <section className="panel">
-          <div className="panel-title">{topTab}</div>
-
-          {topTab === "출석" && (
-            <>
-              <div className="stats">
-                <div className="stat">
-                  <div className="k">오늘 출석</div>
-                  <div className="v">15/20</div>
-                </div>
-                <div className="stat">
-                  <div className="k">지각</div>
-                  <div className="v">2</div>
-                </div>
-                <div className="stat">
-                  <div className="k">결석</div>
-                  <div className="v">3</div>
-                </div>
-              </div>
-              <table className="table">
-                <thead><tr><th>라운드</th><th>시작</th><th>종료</th><th>상태</th></tr></thead>
-                <tbody>
-                  <tr><td>#3</td><td>10:00</td><td>12:00</td><td>종료</td></tr>
-                  <tr><td>#2</td><td>10:00</td><td>12:00</td><td>종료</td></tr>
-                  <tr><td>#1</td><td>10:00</td><td>12:00</td><td>종료</td></tr>
-                </tbody>
-              </table>
-            </>
-          )}
-
-          {topTab === "녹화" && (
-            <div className="grid">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="thumb">
-                  <div className="ph">썸네일</div>
-                  <div className="t">Day {i + 1} · 12:3{i}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {topTab === "아카이브" && (
-            <ul className="archive">
-              <li><a href="#" onClick={(e)=>e.preventDefault()}>강의 자료: DNS.pdf</a></li>
-              <li><a href="#" onClick={(e)=>e.preventDefault()}>실습 가이드: HTTP 캡쳐.md</a></li>
-              <li><a href="#" onClick={(e)=>e.preventDefault()}>노션 페이지: 운영 규칙</a></li>
-            </ul>
-          )}
-        </section>
-      </main>
+      {/* 체크인/강의하기 모달 */}
+      {showCheckin && (
+        <div className="modal-bg" onClick={() => setShowCheckin(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{streamType === "LIVE" ? "강의하기(방송 시작)" : "모각코 체크인(방송 시작)"}</h3>
+            <CheckinForm
+              defaultTitle={meta.title}
+              defaultTrack={meta.track}
+              defaultMic={meta.micOn}
+              defaultCam={meta.camOn}
+              defaultScreen={meta.screenOn}
+              onCancel={() => setShowCheckin(false)}
+              onStart={(form) => {
+                beginStreaming(
+                  {
+                    title: form.title || "제목 없는 방송",
+                    micOn: form.micOn,
+                    camOn: form.camOn,
+                    screenOn: form.screenOn,
+                    track: form.track,
+                  },
+                  streamType
+                );
+                setShowCheckin(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+/* ===== Sub components ===== */
+function SideLink({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button className={`aside-link as-btn ${active ? "active" : ""}`} onClick={onClick}>
+      {label}
+    </button>
+  );
+}
+
+function MyBroadcastView({
+  meta,
+  nickname,
+  avatar,
+  viewers,
+  participants,
+  onToggle,
+  onCheckout,
+}: {
+  meta: MyStreamMeta;
+  nickname: string;
+  avatar?: string;
+  viewers: number;
+  participants: string[];
+  onToggle: (key: ToggleKey) => void;
+  onCheckout: () => void;
+}) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 360px", gap: 16 }}>
+      <div style={{ position: "relative" }}>
+        <div
+          className={`video-surface ${meta.camOn ? "on" : ""}`}
+          style={{ height: 560, display: "grid", placeItems: "center" }}
+        >
+          {meta.camOn ? "🎥 내 캠/화면 미리보기" : "카메라 꺼짐"}
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            left: 16,
+            bottom: 16,
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            background: "rgba(0,0,0,.45)",
+            border: "1px solid rgba(255,255,255,.12)",
+            borderRadius: 12,
+            padding: "10px 14px",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <div style={{ display: "grid" }}>
+            <div style={{ fontWeight: 800 }}>{meta.title || "제목 없는 방송"}</div>
+            <div
+              style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, opacity: 0.9 }}
+            >
+              <span style={{ fontSize: 18 }}>{avatar || "🙂"}</span>
+              <span>{nickname}</span>
+              <span>· {meta.track}</span>
+              <span>· {viewers}명 시청 중</span>
+            </div>
+          </div>
+          <button className="btn sm danger" onClick={onCheckout}>
+            체크아웃
+          </button>
+        </div>
+
+        <div style={{ position: "absolute", right: 16, bottom: 16, display: "flex", gap: 8 }}>
+          <button
+            className="icon-btn"
+            title={meta.micOn ? "마이크 켜짐" : "마이크 음소거"}
+            onClick={() => onToggle("micOn")}
+          >
+            {meta.micOn ? "🎙️" : "🔇"}
+          </button>
+          <button
+            className="icon-btn"
+            title={meta.camOn ? "카메라 끄기" : "카메라 켜기"}
+            onClick={() => onToggle("camOn")}
+          >
+            {meta.camOn ? "📷" : "🚫📷"}
+          </button>
+          <button
+            className="icon-btn"
+            title={meta.screenOn ? "화면 공유 끄기" : "화면 공유 켜기"}
+            onClick={() => onToggle("screenOn")}
+          >
+            {meta.screenOn ? "🖥️" : "🚫🖥️"}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: 12 }}>
+        <div className="mine" style={{ padding: 12, maxHeight: 220, overflow: "auto" }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>
+            참여자 <span style={{ opacity: 0.7, fontWeight: 500 }}>{viewers}명</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {participants.length === 0 ? (
+              <div className="muted">아직 참여자가 없어요.</div>
+            ) : (
+              participants.map((name, idx) => (
+                <div
+                  key={`${name}-${idx}`}
+                  className="chip"
+                  style={{ justifyContent: "flex-start" }}
+                >
+                  {name}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        <div>
+          <ChatPage channel="chat:my-broadcast" placeholder="채팅 입력…" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CheckinForm({
+  defaultTitle,
+  defaultTrack,
+  defaultMic,
+  defaultCam,
+  defaultScreen,
+  onCancel,
+  onStart,
+}: {
+  defaultTitle?: string;
+  defaultTrack: Track;
+  defaultMic: boolean;
+  defaultCam: boolean;
+  defaultScreen: boolean;
+  onCancel: () => void;
+  onStart: (v: {
+    title: string;
+    track: Track;
+    micOn: boolean;
+    camOn: boolean;
+    screenOn: boolean;
+  }) => void;
+}) {
+  const [title, setTitle] = useState(defaultTitle || "");
+  const [track, setTrack] = useState<Track>(defaultTrack);
+  const [micOn, setMicOn] = useState(defaultMic);
+  const [camOn, setCamOn] = useState(defaultCam);
+  const [screenOn, setScreenOn] = useState(defaultScreen);
+
+  return (
+    <form
+      className="form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onStart({ title, track, micOn, camOn, screenOn });
+      }}
+    >
+      <label>방송 제목</label>
+      <input
+        className="ipt"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="예: 오늘의 문제풀이"
+      />
+
+      <label>학습 구분</label>
+      <div style={{ display: "flex", gap: 8 }}>
+        {(["WEB", "ANDROID", "IOS"] as Track[]).map((t) => (
+          <button
+            type="button"
+            key={t}
+            className={`chip ${track === t ? "on" : ""}`}
+            onClick={() => setTrack(t)}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <label>카메라</label>
+      <div>
+        <input type="checkbox" checked={camOn} onChange={(e) => setCamOn(e.target.checked)} /> 내
+        얼굴 보이기
+      </div>
+
+      <label>마이크</label>
+      <div>
+        <input type="checkbox" checked={micOn} onChange={(e) => setMicOn(e.target.checked)} />{" "}
+        음소거 해제
+      </div>
+
+      <label>화면 공유</label>
+      <div>
+        <input type="checkbox" checked={screenOn} onChange={(e) => setScreenOn(e.target.checked)} />{" "}
+        화면 공유
+      </div>
+
+      <div className="modal-actions">
+        <button type="button" className="btn ghost" onClick={onCancel}>
+          취소
+        </button>
+        <button type="submit" className="btn">
+          체크인
+        </button>
+      </div>
+    </form>
   );
 }

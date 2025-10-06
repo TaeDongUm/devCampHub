@@ -371,3 +371,76 @@
     grid-column: span 12;
   }
 }
+
+/* === Global Dark Pass === */
+:root {
+  --bg-panel: #121a23;
+  --bg-surface: #121a23;
+  --fg: #ffffff;
+  --fg-muted: #b9c4cf;
+  --border-dim: #1f2732;
+}
+
+.wrap,
+.board,
+.modal,
+.mine,
+.video-surface {
+  background: var(--bg-panel) !important;
+  color: var(--fg) !important;
+}
+
+.board table thead th {
+  background: #131b24 !important;
+  color: var(--fg) !important;
+}
+
+.board table tbody td,
+.board table {
+  color: var(--fg) !important;
+  background: var(--bg-panel) !important;
+}
+
+.ipt,
+textarea.ipt,
+select.ipt {
+  background: #0e151c !important;
+  color: var(--fg) !important;
+  border: 1px solid var(--border-dim) !important;
+}
+
+.modal-bg {
+  background: rgba(0, 0, 0, 0.55) !important;
+}
+.modal {
+  border: 1px solid var(--border-dim) !important;
+}
+
+/* 아이콘 버튼 */
+.icon-btn {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 6px 10px;
+  color: #fff;
+  cursor: pointer;
+}
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* 칩/뱃지 대비 */
+.badge {
+  color: #fff !important;
+}
+
+/* 상태 배지: 검정 배경 + 흰 글자로 통일 */
+.badge,
+.badge.ongoing,
+.badge.upcoming,
+.badge.ended {
+  background: #000 !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: none !important;
+}

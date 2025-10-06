@@ -10,6 +10,8 @@ import StudentHome from "./pages/StudentHome";
 import CampDetail from "./pages/CampDetail";
 import DashBoardHome from "./pages/DashBoardHome";
 import Settings from "./pages/Settings";
+import Attendance from "./pages/Attendance";
+import MyPage from "./pages/MyPage";
 
 function RoutedHome() {
   const navigate = useNavigate();
@@ -28,9 +30,12 @@ export default function App() {
         <Route path="/verify" element={<Verify />} />
         <Route path="/admin/home" element={<AdminHome />} />
         <Route path="/student/home" element={<StudentHome />} />
-        <Route path="/camp/:id" element={<CampDetail />} />
+        <Route path="/camp/:campId" element={<CampDetail />} />
         <Route path="/dashboard/home" element={<DashBoardHome />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/camp/:campId/attendance" element={<Attendance />} />
+        <Route path="/attendance" element={<Attendance />} />
+        <Route path="/mypage" element={<MyPage />} />
       </Routes>
     </BrowserRouter>
   );
