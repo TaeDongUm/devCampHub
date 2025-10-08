@@ -1,46 +1,99 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { http } from "../api/http";
 import "../styles/SignupStudent.css";
 
 export default function SignupStudent() {
-  const [form, setForm] = useState({
-    name: "", nickname: "", gender: "", username: "",
-    email: "", password: ""
-  });
+    const navigate = useNavigate();
+    const [form, setForm] = useState({
+        email: "",
+        password: "",
+        nickname: "",
+        verificationCode: "",
+    });
+    const [error, setError] = useState("");
+    const [isCodeSent, setIsCodeSent] = useState(false);
+    const [timer, setTimer] = useState(600); // 10분
 
-  const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setForm(s => ({ ...s, [name]: value }));
-  };
+    useEffect(() => {
+        if (!isCodeSent || timer <= 0) return;
+        const interval = setInterval(() => {
+            setTimer((prev) => prev - 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [isCodeSent, timer]);
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const startedAt = Date.now();
-    localStorage.setItem("verify:role", "student");
-    localStorage.setItem("verify:email", form.email);
-    localStorage.setItem("verify:startedAt", String(startedAt));
-    localStorage.setItem("verify:ttlMs", String(3 * 60 * 1000)); // 3분
-    window.location.href = "/verify";
-  };
+    const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setForm((s) => ({ ...s, [name]: value }));
+    };
 
-  return (
-    <main className="sstu">
-      <section className="sstu-card">
-        <h1 className="sstu-title">학생 회원가입</h1>
-        <form className="sstu-form" onSubmit={submit}>
-          <input name="name" placeholder="이름" className="sstu-input" onChange={onChange} required />
-          <input name="nickname" placeholder="별명" className="sstu-input" onChange={onChange} />
-          <select name="gender" className="sstu-input" onChange={onChange} defaultValue="">
-            <option value="" disabled>성별</option>
-            <option value="male">남</option>
-            <option value="female">여</option>
-          </select>
-          <input name="username" placeholder="아이디" className="sstu-input" onChange={onChange} required />
-          <input type="email" name="email" placeholder="이메일(인증용)" className="sstu-input" onChange={onChange} required />
-          <input type="password" name="password" placeholder="비밀번호" className="sstu-input" onChange={onChange} required />
-          <button className="btn-primary" type="submit">가입 후 인증번호 입력으로 이동</button>
-        </form>
-        <div className="sstu-footer">이미 계정이 있나요? <a href="/login">로그인</a></div>
-      </section>
-    </main>
-  );
+    const handleSendCode = async () => {
+        if (!form.email) {
+            setError("이메일을 입력해주세요.");
+            return;
+        }
+        try {
+            setError("");
+            await http("/api/auth/send-verification-code", {
+                method: "POST",
+                body: JSON.stringify({ email: form.email }),
+            });
+            setIsCodeSent(true);
+            setTimer(600);
+        } catch (e: any) {
+            setError(e.message || "인증번호 발송에 실패했습니다.");
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await http("/api/auth/register", {
+                method: "POST",
+                body: JSON.stringify({ ...form, role: "STUDENT" }),
+            });
+            alert("회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.");
+            navigate("/login");
+        } catch (e: any) {
+            setError(e.message || "회원가입에 실패했습니다.");
+        }
+    };
+
+    const formatTime = (seconds: number) => {
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
+    };
+
+    return (
+        <main className="sstu">
+            <section className="sstu-card">
+                <h1 className="sstu-title">학생 회원가입</h1>
+                <form className="sstu-form" onSubmit={handleSubmit}>
+                    <div className="input-group">
+                        <input type="email" name="email" placeholder="이메일" className="sstu-input" onChange={onChange} required disabled={isCodeSent} />
+                        <button type="button" className="btn-secondary" onClick={handleSendCode} disabled={isCodeSent}>
+                            {isCodeSent ? "재전송" : "인증번호 발송"}
+                        </button>
+                    </div>
+
+                    {isCodeSent && (
+                        <div className="input-group">
+                            <input type="text" name="verificationCode" placeholder="인증번호 6자리" className="sstu-input" onChange={onChange} required />
+                            <span className="timer">{formatTime(timer)}</span>
+                        </div>
+                    )}
+
+                    <input type="password" name="password" placeholder="비밀번호 (8자 이상)" className="sstu-input" onChange={onChange} required />
+                    <input name="nickname" placeholder="닉네임 (2자 이상 15자 이하)" className="sstu-input" onChange={onChange} required />
+                    
+                    {error && <p className="error-message">{error}</p>}
+
+                    <button className="btn-primary" type="submit">회원가입</button>
+                </form>
+                <div className="sstu-footer">이미 계정이 있나요? <a href="/login">로그인</a></div>
+            </section>
+        </main>
+    );
 }
