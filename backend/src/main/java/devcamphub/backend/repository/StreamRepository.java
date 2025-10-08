@@ -13,4 +13,7 @@ public interface StreamRepository extends JpaRepository<Stream, Long> {
     // 예: "네트워크 스터디 캠프"에서 "LIVE" 타입의 "ACTIVE" 상태인 모든 방송 조회
     List<Stream> findByCampIdAndTypeAndStatus(Long campId, StreamType type, StreamStatus status);
 
+    // 특정 캠프에서 특정 상태인 모든 스트림 목록 조회 (활성 스트림 목록 조회 시 사용)
+    List<Stream> findByCampIdAndStatus(Long campId, StreamStatus status);
+
 }
