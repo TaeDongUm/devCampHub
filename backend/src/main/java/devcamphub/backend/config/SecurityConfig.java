@@ -1,18 +1,67 @@
 package devcamphub.backend.config;
 
+import devcamphub.backend.config.jwt.JwtAuthenticationFilter;
+import devcamphub.backend.domain.Role;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // BCrypt는 현재 가장 널리 사용되는 안전한 패스워드 해싱 방식 중 하나입니다.
         return new BCryptPasswordEncoder();
     }
 
-    // 앞으로 여기에 JWT 필터, 경로별 권한 설정 등이 추가될 예정입니다.
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                // CSRF 비활성화 (stateless JWT 인증 사용)
+                .csrf(csrf -> csrf.disable())
+                // 세션 관리 정책을 STATELESS로 설정
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // HTTP 요청에 대한 인가 규칙 설정
+                .authorizeHttpRequests(authorize -> authorize
+                        // 인증 API, WebSocket 접속 경로는 모두에게 허용
+                        .requestMatchers("/api/auth/**", "/ws/**").permitAll()
+                        // 캠프 생성, 수정, 삭제는 ADMIN 역할만 가능
+                        .requestMatchers(HttpMethod.POST, "/api/camps").hasRole(Role.ADMIN.name())
+                        .requestMatchers(HttpMethod.PATCH, "/api/camps/*").hasRole(Role.ADMIN.name())
+                        .requestMatchers(HttpMethod.DELETE, "/api/camps/*").hasRole(Role.ADMIN.name())
+                        // 캠프 참여는 STUDENT 역할만 가능
+                        .requestMatchers(HttpMethod.POST, "/api/camps/*/join").hasRole(Role.STUDENT.name())
+                        // 마이페이지 관련 API는 인증된 사용자 모두에게 허용
+                        .requestMatchers("/api/me/**").authenticated()
+                        // 스트림 이벤트는 인증된 사용자 모두에게 허용
+                        .requestMatchers("/api/streams/events").authenticated()
+                        // 캠프 조회는 인증된 사용자 모두에게 허용
+                        .requestMatchers(HttpMethod.GET, "/api/camps", "/api/camps/**").authenticated()
+                        // 그 외 모든 요청은 인증 필요
+                        .anyRequest().authenticated()
+                )
+                // 직접 구현한 JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
 }
