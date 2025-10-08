@@ -1,5 +1,6 @@
 package devcamphub.backend.domain;
 
+import devcamphub.backend.dto.CampUpdateRequest;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -62,5 +63,33 @@ public class Camp {
         this.endDate = endDate;
         this.status = status;
         this.inviteCode = inviteCode;
+    }
+
+    //== Business Logic ==//
+    public void updateDetails(CampUpdateRequest request) {
+        if (request.getName() != null) {
+            this.name = request.getName();
+        }
+        if (request.getDescription() != null) {
+            this.description = request.getDescription();
+        }
+        if (request.getHomepageUrl() != null) {
+            this.homepageUrl = request.getHomepageUrl();
+        }
+        if (request.getStartDate() != null) {
+            this.startDate = request.getStartDate();
+        }
+        if (request.getEndDate() != null) {
+            this.endDate = request.getEndDate();
+        }
+
+        // 날짜 변경에 따른 상태 업데이트
+        if (this.startDate.isAfter(LocalDate.now())) {
+            this.status = CampStatus.UPCOMING;
+        } else if (this.endDate.isBefore(LocalDate.now())) {
+            this.status = CampStatus.ENDED;
+        } else {
+            this.status = CampStatus.ONGOING;
+        }
     }
 }
