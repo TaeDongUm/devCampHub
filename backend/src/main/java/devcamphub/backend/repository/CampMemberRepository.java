@@ -18,4 +18,7 @@ public interface CampMemberRepository extends JpaRepository<CampMember, Long> {
 
     // 특정 사용자가 특정 캠프에 참여했는지 확인
     Optional<CampMember> findByCampAndUser(Camp camp, User user);
+
+    // 특정 캠프에 속한 모든 멤버 삭제 (캠프 삭제 시 사용)
+    void deleteAllByCamp(Camp camp);
 }
