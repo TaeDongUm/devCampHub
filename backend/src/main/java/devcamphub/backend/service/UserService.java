@@ -1,12 +1,16 @@
 package devcamphub.backend.service;
 
+import devcamphub.backend.domain.EmailVerification;
 import devcamphub.backend.domain.User;
 import devcamphub.backend.dto.LoginRequest;
 import devcamphub.backend.dto.LoginResponse;
 import devcamphub.backend.dto.RegistrationRequest;
+import devcamphub.backend.repository.EmailVerificationRepository;
 import devcamphub.backend.repository.UserRepository;
 import devcamphub.backend.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -14,15 +18,28 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.FileCopyUtils;
+
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor // final 필드에 대한 생성자를 자동으로 생성합니다.
 public class UserService {
 
     private final UserRepository userRepository;
+    private final EmailVerificationRepository emailVerificationRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final EmailService emailService;
+
+    @Value("classpath:templates/verification-email.html")
+    private ClassPathResource emailTemplateResource;
 
     @Transactional
     public User registerUser(RegistrationRequest request) {
@@ -47,8 +64,46 @@ public class UserService {
                 .role(request.getRole())
                 .build();
 
-        // 5. 데이터베이스에 저장
-        return userRepository.save(newUser);
+        // 5. 데이터베이스에 사용자 정보 저장
+        User savedUser = userRepository.save(newUser);
+
+        // 6. 이메일 인증 코드 생성 및 발송
+        sendVerificationEmail(savedUser.getEmail());
+
+        return savedUser;
+    }
+
+    private void sendVerificationEmail(String email) {
+        String code = createVerificationCode();
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
+
+        EmailVerification verification = EmailVerification.builder()
+                .email(email)
+                .code(code)
+                .expiresAt(expiresAt)
+                .build();
+        emailVerificationRepository.save(verification);
+
+        try {
+            String htmlContent = readEmailTemplate();
+            htmlContent = htmlContent.replace("{{VERIFICATION_CODE}}", code);
+            emailService.sendVerificationEmail(email, "[devCampHub] 이메일 인증 코드 안내", htmlContent);
+        } catch (IOException e) {
+            // 로깅 또는 예외 처리
+            throw new RuntimeException("이메일 템플릿을 읽는 중 오류가 발생했습니다.", e);
+        }
+    }
+
+    private String createVerificationCode() {
+        Random random = new Random();
+        int number = 100000 + random.nextInt(900000);
+        return String.valueOf(number);
+    }
+
+    private String readEmailTemplate() throws IOException {
+        try (Reader reader = new InputStreamReader(emailTemplateResource.getInputStream(), StandardCharsets.UTF_8)) {
+            return FileCopyUtils.copyToString(reader);
+        }
     }
 
     @Transactional
