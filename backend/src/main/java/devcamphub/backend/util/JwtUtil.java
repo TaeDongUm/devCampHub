@@ -1,9 +1,11 @@
 package devcamphub.backend.util;
 
+import devcamphub.backend.domain.User;
+import devcamphub.backend.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders; // Added import
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,7 +21,7 @@ import java.util.function.Function;
 public class JwtUtil {
 
     @Value("${jwt.secret}")
-    private String secret; // This should now be a base64 encoded string
+    private String secret;
 
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpirationMs;
@@ -27,24 +29,25 @@ public class JwtUtil {
     @Value("${jwt.refresh-token-expiration-ms}")
     private long refreshTokenExpirationMs;
 
-    private SecretKey signingKey; // Store the generated/decoded key
+    private SecretKey signingKey;
 
-    // Initialize the signing key once
+    private final UserRepository userRepository;
+
+    public JwtUtil(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
     private SecretKey getSigningKey() {
         if (this.signingKey == null) {
-            // Attempt to decode the secret from properties
             try {
-                // HS512 requires a key of at least 512 bits (64 bytes)
                 byte[] keyBytes = Decoders.BASE64.decode(secret);
                 if (keyBytes.length < 64) {
-                    // If provided secret is too short, generate a new secure one
                     this.signingKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
                     System.err.println("WARNING: Provided JWT secret is too short for HS512. Generating a new secure key.");
                 } else {
                     this.signingKey = Keys.hmacShaKeyFor(keyBytes);
                 }
             } catch (IllegalArgumentException e) {
-                // If decoding fails (e.g., not a valid base64 string), generate a new secure one
                 this.signingKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
                 System.err.println("WARNING: Provided JWT secret is not a valid Base64 string. Generating a new secure key.");
             }
@@ -75,18 +78,19 @@ public class JwtUtil {
 
     public String generateAccessToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
-        // Assuming userDetails.getAuthorities() returns a collection of GrantedAuthority
-        // and that the role is represented as a string in these authorities.
-        // For simplicity, let's assume there's only one role or we take the first one.
         if (userDetails.getAuthorities() != null && !userDetails.getAuthorities().isEmpty()) {
-            // Extract the role (e.g., "ROLE_ADMIN", "ROLE_STUDENT")
             String role = userDetails.getAuthorities().iterator().next().getAuthority();
-            // Remove "ROLE_" prefix if present, to match frontend's "ADMIN", "STUDENT"
             if (role.startsWith("ROLE_")) {
                 role = role.substring(5);
             }
             claims.put("role", role);
         }
+
+        String nickname = userRepository.findByEmail(userDetails.getUsername())
+                .map(User::getNickname)
+                .orElse("");
+        claims.put("nickname", nickname);
+
         return createToken(claims, userDetails.getUsername(), accessTokenExpirationMs);
     }
 
