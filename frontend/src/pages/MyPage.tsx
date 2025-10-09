@@ -1,6 +1,19 @@
-import React, { useMemo, useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/CampDetail.css"; // 버튼/칩 공용 스타일 재사용
+import { http } from "../api/http";
+import "../styles/CampDetail.css";
+
+// 백엔드 DTO와 타입 일치
+interface MyProfileResponse {
+  id: number;
+  email: string;
+  nickname: string;
+  role: "ADMIN" | "STUDENT";
+  avatarUrl: string;
+  track: string;
+  githubUrl: string;
+  blogUrl: string;
+}
 
 type AttendanceStatus = "출석" | "지각" | "결석";
 type AttendanceRow = {
@@ -12,16 +25,8 @@ type AttendanceRow = {
 
 export default function MyPage() {
   const nav = useNavigate();
-
-  // 프로필
-  const nickname = localStorage.getItem("nickname") || "익명";
-  const avatar = localStorage.getItem("avatar") || "👩‍💻";
-  const email = localStorage.getItem("email") || "—";
-  const github = localStorage.getItem("profile:github") || "—";
-  const blog = localStorage.getItem("profile:blog") || "—";
-  const track = (localStorage.getItem("profile:track") || "WEB").toUpperCase();
-  const rawRole = (localStorage.getItem("role") || "STUDENT").toUpperCase();
-  const role: "ADMIN" | "STUDENT" = rawRole === "ADMIN" ? "ADMIN" : "STUDENT";
+  const [profile, setProfile] = useState<MyProfileResponse | null>(null);
+  const [openDetail, setOpenDetail] = useState<boolean>(false);
 
   // 출석 (임시: 로컬 저장된 값 또는 더미)
   const rows: AttendanceRow[] = useMemo(() => {
@@ -41,7 +46,17 @@ export default function MyPage() {
     ];
   }, []);
 
-  const [openDetail, setOpenDetail] = useState<boolean>(false);
+  useEffect(() => {
+    http<MyProfileResponse>("/api/me")
+      .then((data) => {
+        if (data) setProfile(data);
+      })
+      .catch((err) => console.error("프로필 로딩 실패:", err));
+  }, []);
+
+  if (!profile) {
+    return <div>프로필 정보를 불러오는 중입니다...</div>;
+  }
 
   return (
     <main className="wrap" style={{ maxWidth: 1000 }}>
@@ -56,21 +71,19 @@ export default function MyPage() {
       <section className="mine" style={{ display: "grid", gap: 8, padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ display: "flex", gap: 14 }}>
-            <div style={{ fontSize: 42 }}>{avatar}</div>
+            <div style={{ fontSize: 42 }}>{profile.avatarUrl || "👩‍💻"}</div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <h2 style={{ margin: 0 }}>{nickname}</h2>
-                {/* 학습 구분 + 역할 뱃지 (요청) */}
-                <span className="chip on">{track}</span>
+                <h2 style={{ margin: 0 }}>{profile.nickname}</h2>
+                <span className="chip on">{profile.track || "미설정"}</span>
                 <span className="chip" title="역할(변경 불가)">
-                  {role === "ADMIN" ? "ADMIN" : "STUDENT"}
+                  {profile.role}
                 </span>
               </div>
               <div style={{ marginTop: 6, lineHeight: 1.8 }}>
-                <div>이름: {localStorage.getItem("name") || "—"}</div>
-                <div>email: {email}</div>
-                <div>Github: {github}</div>
-                <div>Blog: {blog}</div>
+                <div>email: {profile.email}</div>
+                <div>Github: {profile.githubUrl || "미설정"}</div>
+                <div>Blog: {profile.blogUrl || "미설정"}</div>
               </div>
             </div>
           </div>
@@ -88,8 +101,6 @@ export default function MyPage() {
           }}
         >
           <h2 style={{ margin: 0 }}>출석 현황</h2>
-
-          {/* “자세히 보기”를 테이블 펼침/접힘 토글*/}
           <button className="btn ghost" onClick={() => setOpenDetail((v) => !v)}>
             {openDetail ? "접기" : "자세히 보기"}
           </button>

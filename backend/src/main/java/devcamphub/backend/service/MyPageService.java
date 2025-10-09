@@ -4,6 +4,7 @@ import devcamphub.backend.domain.User;
 import devcamphub.backend.dto.AttendanceResponse;
 import devcamphub.backend.dto.CampResponse;
 import devcamphub.backend.dto.MyProfileResponse;
+import devcamphub.backend.dto.ProfileUpdateRequest;
 import devcamphub.backend.repository.AttendanceRepository;
 import devcamphub.backend.repository.CampMemberRepository;
 import devcamphub.backend.repository.UserRepository;
@@ -27,6 +28,22 @@ public class MyPageService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userEmail));
         return MyProfileResponse.from(user);
+    }
+
+    @Transactional
+    public MyProfileResponse updateMyProfile(String userEmail, ProfileUpdateRequest request) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userEmail));
+        
+        // 닉네임 중복 확인 (자기 자신은 제외)
+        if (request.nickname() != null && !request.nickname().equals(user.getNickname())) {
+            if (userRepository.existsByNickname(request.nickname())) {
+                throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+            }
+        }
+
+        user.updateProfile(request);
+        return MyProfileResponse.from(userRepository.save(user));
     }
 
     public List<CampResponse> getMyCamps(String userEmail) {

@@ -1,35 +1,55 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { http } from "../api/http";
 import "../styles/CampDetail.css";
+
+interface MyProfileResponse {
+  id: number;
+  email: string;
+  nickname: string;
+  role: "ADMIN" | "STUDENT";
+  avatarUrl: string;
+  track: string;
+  githubUrl: string;
+  blogUrl: string;
+}
 
 type Track = "WEB" | "ANDROID" | "IOS";
 
 export default function Settings() {
   const nav = useNavigate();
+  const [profile, setProfile] = useState<Partial<MyProfileResponse>>({});
+  const [error, setError] = useState("");
 
-  // 프로필 필드
-  const [name, setName] = useState(localStorage.getItem("name") || "");
-  const [nickname, setNickname] = useState(localStorage.getItem("nickname") || "");
-  const [email, setEmail] = useState(localStorage.getItem("email") || "");
-  const [github, setGithub] = useState(localStorage.getItem("profile:github") || "");
-  const [blog, setBlog] = useState(localStorage.getItem("profile:blog") || "");
-  const [track, setTrack] = useState<Track>(
-    (localStorage.getItem("profile:track") || "WEB").toUpperCase() as Track
-  );
+  useEffect(() => {
+    http<MyProfileResponse>("/api/me")
+      .then((data) => {
+        if (data) setProfile(data);
+      })
+      .catch(() => setError("프로필 정보를 불러오는 데 실패했습니다."));
+  }, []);
 
-  // 역할은 읽기 전용(요청)
-  const rawRole = (localStorage.getItem("role") || "STUDENT").toUpperCase();
-  const role: "ADMIN" | "STUDENT" = rawRole === "ADMIN" ? "ADMIN" : "STUDENT";
+  const onFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setProfile((p) => ({ ...p, [e.target.name]: e.target.value }));
+  };
 
-  const onSave = () => {
-    localStorage.setItem("name", name);
-    localStorage.setItem("nickname", nickname);
-    localStorage.setItem("email", email);
-    localStorage.setItem("profile:github", github);
-    localStorage.setItem("profile:blog", blog);
-    localStorage.setItem("profile:track", track);
-    // role은 저장하지 않음(변경 불가)
-    nav("/mypage");
+  const onTrackChange = (track: Track) => {
+    setProfile((p) => ({ ...p, track }));
+  };
+
+  const onSave = async () => {
+    try {
+      await http("/api/me", {
+        method: "PUT",
+        body: JSON.stringify(profile),
+      });
+      alert("프로필이 저장되었습니다.");
+      nav("/mypage");
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(e.message || "저장에 실패했습니다.");
+      }
+    }
   };
 
   return (
@@ -39,20 +59,32 @@ export default function Settings() {
       </header>
 
       <section className="mine" style={{ padding: 16, display: "grid", gap: 12 }}>
-        <label>이름</label>
-        <input className="ipt" value={name} onChange={(e) => setName(e.target.value)} />
+        <label>닉네임</label>
+        <input
+          name="nickname"
+          className="ipt"
+          value={profile.nickname || ""}
+          onChange={onFieldChange}
+        />
 
-        <label>별명</label>
-        <input className="ipt" value={nickname} onChange={(e) => setNickname(e.target.value)} />
-
-        <label>email</label>
-        <input className="ipt" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <label>email (변경 불가)</label>
+        <input name="email" className="ipt" value={profile.email || ""} readOnly />
 
         <label>Github</label>
-        <input className="ipt" value={github} onChange={(e) => setGithub(e.target.value)} />
+        <input
+          name="githubUrl"
+          className="ipt"
+          value={profile.githubUrl || ""}
+          onChange={onFieldChange}
+        />
 
         <label>Blog</label>
-        <input className="ipt" value={blog} onChange={(e) => setBlog(e.target.value)} />
+        <input
+          name="blogUrl"
+          className="ipt"
+          value={profile.blogUrl || ""}
+          onChange={onFieldChange}
+        />
 
         <label>학습 구분</label>
         <div style={{ display: "flex", gap: 8 }}>
@@ -60,24 +92,20 @@ export default function Settings() {
             <button
               key={t}
               type="button"
-              className={`chip ${track === t ? "on" : ""}`}
-              onClick={() => setTrack(t)}
+              className={`chip ${profile.track === t ? "on" : ""}`}
+              onClick={() => onTrackChange(t)}
             >
               {t}
             </button>
           ))}
         </div>
 
-        {/* 역할: 읽기 전용 / 비활성화*/}
-        <label>역할</label>
+        <label>역할 (변경 불가)</label>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span className="chip" title="설정에서 변경할 수 없습니다.">
-            {role}
-          </span>
-          <span className="muted" style={{ fontSize: 13 }}>
-            ※ 역할은 관리자에서만 부여/변경됩니다.
-          </span>
+          <span className="chip">{profile.role}</span>
         </div>
+
+        {error && <p style={{ color: "red" }}>{error}</p>}
 
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
           <button className="btn" onClick={onSave}>

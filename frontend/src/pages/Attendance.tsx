@@ -1,7 +1,13 @@
-// src/pages/MyAttendance.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { http } from "../api/http";
 
-type Row = { date: string; start: string; totalMinutes: number };
+// 백엔드 DTO와 타입 일치
+interface AttendanceResponse {
+    date: string;
+    totalMinutes: number;
+    status: 'ATTENDANCE' | 'TARDY' | 'ABSENT';
+}
 
 function fmtMinutes(mm: number) {
   const h = Math.floor(mm / 60);
@@ -9,62 +15,54 @@ function fmtMinutes(mm: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-/** 23:59 평가 규칙:
- *   - 현재시각 < 해당일 23:59:59  => "출석대기중"
- *   - 현재시각 >= 23:59:59        => total>=240분 "출석" / 아니면 "미출석"
- */
-function statusAtCutoff(row: Row, now = new Date()): "출석" | "미출석" | "출석대기중" {
-  const cutoff = new Date(`${row.date}T23:59:59`);
-  if (isNaN(cutoff.getTime())) return "미출석"; // date 파싱 실패시 안전장치
-  if (now < cutoff) return "출석대기중";
-  return row.totalMinutes >= 240 ? "출석" : "미출석";
-}
-
 export default function Attendance() {
-  // 예시 데이터(백엔드 연동 전): start=최초 방송 시작, totalMinutes=그날 누적 방송시간
-  const rows = (JSON.parse(localStorage.getItem("attendance:me") || "null") as Row[]) || [
-    { date: "2025-02-01", start: "09:03", totalMinutes: 255 }, // 4h15m
-    { date: "2025-02-02", start: "09:54", totalMinutes: 120 }, // 2h
-    { date: "2025-02-03", start: "-", totalMinutes: 0 },
-  ];
+  const { campId } = useParams<{ campId: string }>();
+  const [attendances, setAttendances] = useState<AttendanceResponse[]>([]);
+  const [error, setError] = useState("");
 
-  const now = new Date();
+  useEffect(() => {
+    if (!campId) return;
+
+    http<AttendanceResponse[]>(`/api/me/camps/${campId}/attendance`)
+      .then(data => {
+        if (data) setAttendances(data);
+      })
+      .catch(() => setError("출석 정보를 불러오는 데 실패했습니다."));
+
+  }, [campId]);
 
   return (
     <main className="wrap" style={{ maxWidth: 1000 }}>
-      <header className="board-head">
-        <h1>내 출석 현황</h1>
-      </header>
+      <header className="board-head"><h1>내 출석 현황</h1></header>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
       <div className="board">
         <table>
           <thead>
             <tr>
               <th>학습일</th>
-              <th>시작 시간</th>
-              <th>총 방송시간</th>
+              <th>총 학습 시간</th>
               <th>상태</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => {
-              const status = statusAtCutoff(r, now);
+            {attendances.map((r, i) => {
               const badgeClass =
-                status === "출석"
+                r.status === "ATTENDANCE"
                   ? "badge ongoing"
-                  : status === "출석대기중"
+                  : r.status === "TARDY"
                   ? "badge upcoming"
-                  : "badge ended"; // 미출석
+                  : "badge ended";
               return (
                 <tr key={i}>
                   <td>{r.date}</td>
-                  <td>{r.start}</td>
                   <td>{fmtMinutes(r.totalMinutes)}</td>
-                  <td>
-                    <span className={badgeClass}>{status}</span>
-                  </td>
+                  <td><span className={badgeClass}>{r.status}</span></td>
                 </tr>
               );
             })}
+            {attendances.length === 0 && (
+              <tr><td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>출석 기록이 없습니다.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
