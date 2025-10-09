@@ -8,10 +8,12 @@ import devcamphub.backend.dto.RegistrationRequest;
 import devcamphub.backend.repository.EmailVerificationRepository;
 import devcamphub.backend.repository.UserRepository;
 import devcamphub.backend.util.JwtUtil;
+import jakarta.mail.MessagingException; // Added import
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.mail.MailSendException; // Added import
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -28,7 +30,9 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Optional; // Added import
 import java.util.Random;
+import java.util.regex.Pattern; // Added import
 
 @Service
 public class UserService implements UserDetailsService {
@@ -39,6 +43,10 @@ public class UserService implements UserDetailsService {
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
+
+    // Regex for email validation
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$", Pattern.CASE_INSENSITIVE);
+
 
     public UserService(UserRepository userRepository, EmailVerificationRepository emailVerificationRepository, @Lazy PasswordEncoder passwordEncoder, JwtUtil jwtUtil, @Lazy AuthenticationManager authenticationManager, EmailService emailService) {
         this.userRepository = userRepository;
@@ -139,7 +147,7 @@ public class UserService implements UserDetailsService {
     @Transactional
     public LoginResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(request.getLoginId(), request.getPassword())
         );
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String accessToken = jwtUtil.generateAccessToken(userDetails);
@@ -148,8 +156,19 @@ public class UserService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email));
+    public UserDetails loadUserByUsername(String loginId) throws UsernameNotFoundException {
+        Optional<User> userOptional;
+
+        if (isEmail(loginId)) {
+            userOptional = userRepository.findByEmail(loginId);
+        } else {
+            userOptional = userRepository.findByNickname(loginId);
+        }
+
+        return userOptional.orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + loginId));
+    }
+
+    private boolean isEmail(String str) {
+        return EMAIL_PATTERN.matcher(str).matches();
     }
 }
