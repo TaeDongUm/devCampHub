@@ -3,6 +3,7 @@ package devcamphub.backend.util;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders; // Added import
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,7 +19,7 @@ import java.util.function.Function;
 public class JwtUtil {
 
     @Value("${jwt.secret}")
-    private String secret;
+    private String secret; // This should now be a base64 encoded string
 
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpirationMs;
@@ -26,8 +27,29 @@ public class JwtUtil {
     @Value("${jwt.refresh-token-expiration-ms}")
     private long refreshTokenExpirationMs;
 
+    private SecretKey signingKey; // Store the generated/decoded key
+
+    // Initialize the signing key once
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+        if (this.signingKey == null) {
+            // Attempt to decode the secret from properties
+            try {
+                // HS512 requires a key of at least 512 bits (64 bytes)
+                byte[] keyBytes = Decoders.BASE64.decode(secret);
+                if (keyBytes.length < 64) {
+                    // If provided secret is too short, generate a new secure one
+                    this.signingKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+                    System.err.println("WARNING: Provided JWT secret is too short for HS512. Generating a new secure key.");
+                } else {
+                    this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+                }
+            } catch (IllegalArgumentException e) {
+                // If decoding fails (e.g., not a valid base64 string), generate a new secure one
+                this.signingKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+                System.err.println("WARNING: Provided JWT secret is not a valid Base64 string. Generating a new secure key.");
+            }
+        }
+        return this.signingKey;
     }
 
     public String extractUsername(String token) {
