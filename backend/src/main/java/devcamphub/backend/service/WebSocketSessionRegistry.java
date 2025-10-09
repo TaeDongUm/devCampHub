@@ -20,42 +20,42 @@ public class WebSocketSessionRegistry {
         return ROOM_PREFIX + roomId;
     }
 
-    public void registerSession(String sessionId, String username) {
-        redisTemplate.opsForHash().put(SESSION_USER_MAP, sessionId, username);
-        log.info("Session registered in Redis: {} for user {}", sessionId, username);
+    public void registerSession(String sessionId, String userEmail) {
+        redisTemplate.opsForHash().put(SESSION_USER_MAP, sessionId, userEmail);
+        log.info("Session registered in Redis: {} for user {}", sessionId, userEmail);
     }
 
     public String unregisterSession(String sessionId) {
-        String username = (String) redisTemplate.opsForHash().get(SESSION_USER_MAP, sessionId);
-        if (username != null) {
+        String userEmail = (String) redisTemplate.opsForHash().get(SESSION_USER_MAP, sessionId);
+        if (userEmail != null) {
             redisTemplate.opsForHash().delete(SESSION_USER_MAP, sessionId);
-            log.info("Session unregistered from Redis: {} for user {}", sessionId, username);
+            log.info("Session unregistered from Redis: {} for user {}", sessionId, userEmail);
         }
-        return username;
+        return userEmail;
     }
 
-    public void joinRoom(String roomId, String username) {
+    public void joinRoom(String roomId, String userEmail) {
         String roomKey = getRoomKey(roomId);
-        redisTemplate.opsForSet().add(roomKey, username);
-        redisTemplate.opsForHash().put(USER_ROOM_MAP, username, roomId);
+        redisTemplate.opsForSet().add(roomKey, userEmail);
+        redisTemplate.opsForHash().put(USER_ROOM_MAP, userEmail, roomId);
         Long size = redisTemplate.opsForSet().size(roomKey);
-        log.info("User {} joined room {}. Total participants in Redis: {}", username, roomId, size);
+        log.info("User {} joined room {}. Total participants in Redis: {}", userEmail, roomId, size);
     }
 
-    public void leaveRoom(String username) {
-        String roomId = (String) redisTemplate.opsForHash().get(USER_ROOM_MAP, username);
+    public void leaveRoom(String userEmail) {
+        String roomId = (String) redisTemplate.opsForHash().get(USER_ROOM_MAP, userEmail);
         if (roomId != null) {
             String roomKey = getRoomKey(roomId);
-            if (Boolean.TRUE.equals(redisTemplate.opsForSet().remove(roomKey, username))) {
+            if (Boolean.TRUE.equals(redisTemplate.opsForSet().remove(roomKey, userEmail))) {
                 Long size = redisTemplate.opsForSet().size(roomKey);
-                log.info("User {} left room {}. Remaining participants in Redis: {}", username, roomId, size);
+                log.info("User {} left room {}. Remaining participants in Redis: {}", userEmail, roomId, size);
             }
-            redisTemplate.opsForHash().delete(USER_ROOM_MAP, username);
+            redisTemplate.opsForHash().delete(USER_ROOM_MAP, userEmail);
         }
     }
 
-    public String getRoomIdForUser(String username) {
-        return (String) redisTemplate.opsForHash().get(USER_ROOM_MAP, username);
+    public String getRoomIdForUser(String userEmail) {
+        return (String) redisTemplate.opsForHash().get(USER_ROOM_MAP, userEmail);
     }
 
     public String getUserBySessionId(String sessionId) {
