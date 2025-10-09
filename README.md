@@ -87,20 +87,21 @@ flowchart TD
 ```mermaid
 graph LR
     subgraph Client
-      FE[React (Vite, TypeScript)]
+      FE["React · Vite · TypeScript"]
     end
-    subgraph Server[Spring Boot Backend]
-      API[REST API + WebSocket]
-      AUTH[JWT & Redis 인증]
-      CAMP[Camp Service]
-      STREAM[Streaming Session]
-      ATT[Attendance Scheduler]
+    subgraph Server["Spring Boot Backend"]
+      API["REST API · WebSocket"]
+      AUTH["JWT · Redis 인증"]
+      CAMP["Camp Service"]
+      STREAM["Streaming Session"]
+      ATT["Attendance Scheduler"]
     end
     subgraph DB
-      MYSQL[(MySQL)]
-      REDIS[(Redis)]
+      MYSQL["MySQL"]
+      REDIS["Redis"]
     end
-    FE -->|HTTP / WS| API
+
+    FE -->|HTTP · WS| API
     API --> AUTH
     API --> CAMP
     API --> STREAM
@@ -109,6 +110,7 @@ graph LR
     STREAM --> MYSQL
     ATT --> MYSQL
     AUTH --> REDIS
+
 ```
 
 ---
