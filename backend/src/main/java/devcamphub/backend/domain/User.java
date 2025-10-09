@@ -61,4 +61,22 @@ public class User {
         this.githubUrl = githubUrl;
         this.blogUrl = blogUrl;
     }
+
+    public void updateProfile(devcamphub.backend.dto.ProfileUpdateRequest request) {
+        if (request.nickname() != null) {
+            this.nickname = request.nickname();
+        }
+        if (request.avatarUrl() != null) {
+            this.avatarUrl = request.avatarUrl();
+        }
+        if (request.track() != null) {
+            this.track = request.track();
+        }
+        if (request.githubUrl() != null) {
+            this.githubUrl = request.githubUrl();
+        }
+        if (request.blogUrl() != null) {
+            this.blogUrl = request.blogUrl();
+        }
+    }
 }
