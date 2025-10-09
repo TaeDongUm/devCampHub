@@ -43,6 +43,15 @@ public class CampController {
         return ResponseEntity.ok(camps);
     }
 
+    @GetMapping("/me") // This will map to /api/camps/me
+    public ResponseEntity<List<CampResponse>> getMyCamps(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        List<CampResponse> myCamps = campService.findMyCamps(userDetails.getUsername());
+        return ResponseEntity.ok(myCamps);
+    }
+
     @GetMapping("/{campId}")
     public ResponseEntity<CampResponse> getCampById(@PathVariable Long campId) {
         CampResponse camp = campService.findCampById(campId);

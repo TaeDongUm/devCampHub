@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +43,7 @@ public class CampService {
                 .creator(creator)
                 .name(request.name())
                 .description(request.description())
+                .capacity(request.capacity())
                 .homepageUrl(request.homepageUrl())
                 .startDate(request.startDate())
                 .endDate(request.endDate())
@@ -66,6 +68,25 @@ public class CampService {
         return campRepository.findById(campId)
                 .map(CampResponse::from)
                 .orElseThrow(() -> new IllegalArgumentException("캠프를 찾을 수 없습니다: " + campId));
+    }
+
+    public List<CampResponse> findMyCamps(String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userEmail));
+
+        // Find camps where the user is the creator
+        List<Camp> createdCamps = campRepository.findByCreator(user);
+
+        // Find camps where the user is a member (excluding those they created, to avoid duplicates)
+        List<Camp> joinedCamps = campMemberRepository.findByUser(user).stream()
+                .map(CampMember::getCamp)
+                .filter(camp -> !createdCamps.contains(camp)) // Avoid adding already created camps
+                .collect(Collectors.toList());
+
+        // Combine and convert to DTOs
+        return Stream.concat(createdCamps.stream(), joinedCamps.stream())
+                .map(CampResponse::from)
+                .collect(Collectors.toList());
     }
 
     @Transactional

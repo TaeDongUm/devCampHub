@@ -54,7 +54,7 @@ public class Camp {
 
     @Builder
     public Camp(User creator, String name, String description, String homepageUrl, LocalDate startDate,
-            LocalDate endDate, CampStatus status, String inviteCode) {
+            LocalDate endDate, CampStatus status, String inviteCode, int capacity) {
         this.creator = creator;
         this.name = name;
         this.description = description;
@@ -63,9 +63,10 @@ public class Camp {
         this.endDate = endDate;
         this.status = status;
         this.inviteCode = inviteCode;
+        this.capacity = capacity; // Assign capacity
     }
 
-    //== Business Logic ==//
+    // == Business Logic ==//
     public void updateDetails(CampUpdateRequest request) {
         if (request.getName() != null) {
             this.name = request.getName();
