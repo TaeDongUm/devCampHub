@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Client, IMessage } from '@stomp/stompjs';
+import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { http } from '../api/http';
 
@@ -37,7 +37,7 @@ export const useChat = (campId: string, channel: string, nickname: string) => {
       onConnect: () => {
         console.log('Connected to WebSocket');
         // 특정 채널을 구독합니다.
-        client.subscribe(`/topic/chat/${campId}/${channel}`, (message: IMessage) => {
+        client.subscribe(`/topic/chat/${campId}/${channel}`, (message) => {
           const receivedMessage = JSON.parse(message.body) as ChatMessage;
           setMessages(prevMessages => [...prevMessages, receivedMessage]);
         });
