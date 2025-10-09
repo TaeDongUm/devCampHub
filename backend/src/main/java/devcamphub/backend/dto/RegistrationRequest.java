@@ -25,7 +25,10 @@ public class RegistrationRequest {
     @Size(min = 2, max = 15, message = "닉네임은 2자 이상 15자 이하이어야 합니다.")
     private String nickname;
 
+    @NotBlank(message = "아이디는 필수입니다.")
+    @Size(min = 2, max = 15, message = "아이디는 2자 이상 15자 이하이어야 합니다.")
+    private String loginId;
+
     @NotNull(message = "역할은 필수입니다.")
     private Role role;
 }
-

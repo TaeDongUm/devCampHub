@@ -45,10 +45,12 @@ public class UserService implements UserDetailsService {
     private final EmailService emailService;
 
     // Regex for email validation
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$",
+            Pattern.CASE_INSENSITIVE);
 
-
-    public UserService(UserRepository userRepository, EmailVerificationRepository emailVerificationRepository, @Lazy PasswordEncoder passwordEncoder, JwtUtil jwtUtil, @Lazy AuthenticationManager authenticationManager, EmailService emailService) {
+    public UserService(UserRepository userRepository, EmailVerificationRepository emailVerificationRepository,
+            @Lazy PasswordEncoder passwordEncoder, JwtUtil jwtUtil, @Lazy AuthenticationManager authenticationManager,
+            EmailService emailService) {
         this.userRepository = userRepository;
         this.emailVerificationRepository = emailVerificationRepository;
         this.passwordEncoder = passwordEncoder;
@@ -100,18 +102,24 @@ public class UserService implements UserDetailsService {
             throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
         }
 
-        // 4. 비밀번호 암호화
+        // 4. 아이디 중복 확인
+        if (userRepository.existsByLoginId(request.getLoginId())) {
+            throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
+        }
+
+        // 5. 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
-        // 5. DTO를 User 엔티티로 변환
+        // 6. DTO를 User 엔티티로 변환
         User newUser = User.builder()
                 .email(request.getEmail())
                 .password(encodedPassword)
                 .nickname(request.getNickname())
                 .role(request.getRole())
+                .loginId(request.getLoginId())
                 .build();
 
-        // 6. 데이터베이스에 저장
+        // 7. 데이터베이스에 저장
         return userRepository.save(newUser);
     }
 
@@ -147,8 +155,7 @@ public class UserService implements UserDetailsService {
     @Transactional
     public LoginResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getLoginId(), request.getPassword())
-        );
+                new UsernamePasswordAuthenticationToken(request.getLoginId(), request.getPassword()));
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String accessToken = jwtUtil.generateAccessToken(userDetails);
         String refreshToken = jwtUtil.generateRefreshToken(userDetails);
