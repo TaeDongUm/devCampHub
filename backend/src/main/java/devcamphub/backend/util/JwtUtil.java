@@ -75,6 +75,18 @@ public class JwtUtil {
 
     public String generateAccessToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
+        // Assuming userDetails.getAuthorities() returns a collection of GrantedAuthority
+        // and that the role is represented as a string in these authorities.
+        // For simplicity, let's assume there's only one role or we take the first one.
+        if (userDetails.getAuthorities() != null && !userDetails.getAuthorities().isEmpty()) {
+            // Extract the role (e.g., "ROLE_ADMIN", "ROLE_STUDENT")
+            String role = userDetails.getAuthorities().iterator().next().getAuthority();
+            // Remove "ROLE_" prefix if present, to match frontend's "ADMIN", "STUDENT"
+            if (role.startsWith("ROLE_")) {
+                role = role.substring(5);
+            }
+            claims.put("role", role);
+        }
         return createToken(claims, userDetails.getUsername(), accessTokenExpirationMs);
     }
 
