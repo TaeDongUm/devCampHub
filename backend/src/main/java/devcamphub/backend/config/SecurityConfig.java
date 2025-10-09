@@ -65,11 +65,11 @@ public class SecurityConfig {
                         // 인증 API, WebSocket 접속 경로는 모두에게 허용
                         .requestMatchers("/api/auth/**", "/ws/**").permitAll()
                         // 캠프 생성, 수정, 삭제는 ADMIN 역할만 가능
-                        .requestMatchers(HttpMethod.POST, "/api/camps").hasRole(Role.ADMIN.name())
-                        .requestMatchers(HttpMethod.PATCH, "/api/camps/*").hasRole(Role.ADMIN.name())
-                        .requestMatchers(HttpMethod.DELETE, "/api/camps/*").hasRole(Role.ADMIN.name())
+                        .requestMatchers(HttpMethod.POST, "/api/camps").hasAuthority(Role.ADMIN.name())
+                        .requestMatchers(HttpMethod.PATCH, "/api/camps/*").hasAuthority(Role.ADMIN.name())
+                        .requestMatchers(HttpMethod.DELETE, "/api/camps/*").hasAuthority(Role.ADMIN.name())
                         // 캠프 참여는 STUDENT 역할만 가능
-                        .requestMatchers(HttpMethod.POST, "/api/camps/*/join").hasRole(Role.STUDENT.name())
+                        .requestMatchers(HttpMethod.POST, "/api/camps/*/join").hasAuthority(Role.STUDENT.name())
                         // 마이페이지 관련 API는 인증된 사용자 모두에게 허용
                         .requestMatchers("/api/me/**").authenticated()
                         // 스트림 이벤트는 인증된 사용자 모두에게 허용
