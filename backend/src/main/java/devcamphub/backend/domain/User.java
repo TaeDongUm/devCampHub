@@ -34,6 +34,9 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true, length = 50)
     private String nickname;
 
+    @Column(nullable = false, unique = true, length = 50)
+    private String loginId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role;
@@ -56,7 +59,7 @@ public class User implements UserDetails {
 
     @Builder
     public User(String email, String password, String nickname, Role role, String avatarUrl, String track,
-            String githubUrl, String blogUrl) {
+            String githubUrl, String blogUrl, String loginId) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
@@ -65,6 +68,7 @@ public class User implements UserDetails {
         this.track = track;
         this.githubUrl = githubUrl;
         this.blogUrl = blogUrl;
+        this.loginId = loginId;
     }
 
     public void updateProfile(devcamphub.backend.dto.ProfileUpdateRequest request) {
