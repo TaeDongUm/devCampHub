@@ -39,6 +39,10 @@ public class Stream {
     @Column(nullable = false, length = 20)
     private StreamStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Track track;
+
     @CreationTimestamp
     @Column(name = "started_at", updatable = false)
     private LocalDateTime startedAt;
@@ -46,12 +50,20 @@ public class Stream {
     @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
+    @Column(name = "thumbnail_path")
+    private String thumbnailPath;
+
+    public void setThumbnailPath(String thumbnailPath) {
+        this.thumbnailPath = thumbnailPath;
+    }
+
     @Builder
-    public Stream(Camp camp, User owner, String title, StreamType type) {
+    public Stream(Camp camp, User owner, String title, StreamType type, Track track) {
         this.camp = camp;
         this.owner = owner;
         this.title = title;
         this.type = type;
+        this.track = track;
         this.status = StreamStatus.ACTIVE; // 생성 시 항상 ACTIVE 상태
     }
 

@@ -2,6 +2,7 @@ package devcamphub.backend.controller;
 
 import devcamphub.backend.dto.StreamCreateRequest;
 import devcamphub.backend.dto.StreamResponseDto;
+import devcamphub.backend.dto.ThumbnailUploadRequest;
 import devcamphub.backend.service.StreamService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,15 @@ public class StreamController {
     public ResponseEntity<List<StreamResponseDto>> getActiveStreams(@PathVariable Long campId) {
         List<StreamResponseDto> activeStreams = streamService.getActiveStreams(campId);
         return ResponseEntity.ok(activeStreams);
+    }
+
+    @PostMapping("/{streamId}/thumbnail")
+    public ResponseEntity<Void> uploadThumbnail(
+            @PathVariable Long streamId,
+            @RequestBody ThumbnailUploadRequest request) {
+        // TODO: 요청을 보낸 사용자가 해당 스트림의 소유자인지 확인하는 권한 검사 로직 추가 필요
+        streamService.updateThumbnail(streamId, request.getThumbnail());
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{streamId}")
