@@ -52,7 +52,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                                 userDetails, null, userDetails.getAuthorities());
                         SecurityContextHolder.getContext().setAuthentication(authentication);
                         accessor.setUser(authentication);
-                        log.debug("WebSocket authentication successful for user: {}", username);
+                        log.info(">>> WebSocketAuthInterceptor: Authentication successful for user: {}. Principal set on accessor.", username);
                     } else {
                         log.debug("WebSocket token validation failed for user: {}", username);
                     }
@@ -60,8 +60,10 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                     log.error("WebSocket JWT authentication failed: {}", e.getMessage(), e);
                 }
             } else {
-                log.debug("No JWT token found in WebSocket CONNECT/SUBSCRIBE headers.");
+                log.info(">>> WebSocketAuthInterceptor: No JWT token found in WebSocket CONNECT/SUBSCRIBE headers. Proceeding as unauthenticated.");
             }
+        } else if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
+            log.info(">>> WebSocketAuthInterceptor: DISCONNECT command received for session: {}", accessor.getSessionId());
         }
         return message;
     }
