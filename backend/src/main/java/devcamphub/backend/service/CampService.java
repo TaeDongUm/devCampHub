@@ -10,6 +10,7 @@ import devcamphub.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class CampService {
 
     private final CampRepository campRepository;
@@ -71,17 +73,23 @@ public class CampService {
     }
 
     public List<CampResponse> findMyCamps(String userEmail) {
+        log.debug("Attempting to find camps for user: {}", userEmail);
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userEmail));
+        log.debug("Found user: {} with ID: {}", user.getEmail(), user.getId());
 
         // Find camps where the user is the creator
         List<Camp> createdCamps = campRepository.findByCreator(user);
+        log.debug("Found {} created camps for user: {}", createdCamps.size(), userEmail);
 
-        // Find camps where the user is a member (excluding those they created, to avoid duplicates)
+        // Find camps where the user is a member (excluding those they created, to avoid
+        // duplicates)
+        // duplicates)
         List<Camp> joinedCamps = campMemberRepository.findByUser(user).stream()
                 .map(CampMember::getCamp)
                 .filter(camp -> !createdCamps.contains(camp)) // Avoid adding already created camps
                 .collect(Collectors.toList());
+        log.debug("Found {} joined camps for user: {}", joinedCamps.size(), userEmail);
 
         // Combine and convert to DTOs
         return Stream.concat(createdCamps.stream(), joinedCamps.stream())

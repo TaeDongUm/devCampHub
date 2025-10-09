@@ -57,20 +57,26 @@ export default function DashboardHome() {
 
   const fetchAllCamps = () => {
     http<Camp[]>("/api/camps")
-      .then(data => {
-        if (data) setCamps(data);
+      .then((data) => {
+        if (data) {
+          setCamps(data);
+          console.log("fetchAllCamps data:", data); // Add this
+        }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error("전체 캠프 목록 로딩 실패:", err);
       });
   };
 
   const fetchMyCamps = () => {
-    http<Camp[]>("/api/me/camps") // 내 캠프 목록 API 호출
-      .then(data => {
-        if (data) setMyCamps(data);
+    http<Camp[]>("/api/camps/me") // 내 캠프 목록 API 호출
+      .then((data) => {
+        if (data) {
+          setMyCamps(data);
+          console.log("fetchMyCamps data:", data); // Add this
+        }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error("내 캠프 목록 로딩 실패:", err);
       });
   };
@@ -82,6 +88,7 @@ export default function DashboardHome() {
       if (payload) {
         setRole(payload.role);
         setNickname(payload.sub);
+        console.log("Decoded JWT Payload:", payload); // Add this line for debugging
       }
     } else {
       nav("/login");
@@ -133,12 +140,13 @@ export default function DashboardHome() {
       const newCamp = await http<Camp>("/api/camps", {
         method: "POST",
         body: JSON.stringify({
-          name: form.name,
-          description: form.description,
-          homepageUrl: form.homepage,
-          startDate: form.start,
-          endDate: form.end,
-        }),
+            name: form.name,
+            description: form.description,
+            homepageUrl: form.homepage,
+            startDate: form.start,
+            endDate: form.end,
+            capacity: form.capacity,
+          }),
       });
       if (newCamp) {
         alert(`캠프가 생성되었습니다. 초대 코드: ${newCamp.inviteCode}`);
@@ -182,9 +190,16 @@ export default function DashboardHome() {
   const [joinCamp, setJoinCamp] = useState<Camp | null>(null);
   const [joinCode, setJoinCode] = useState("");
   const [joinMsg, setJoinMsg] = useState<string | null>(null);
+  const [showJoinCodeInputModal, setShowJoinCodeInputModal] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    nav("/login");
+  };
 
   const onRowClick = (camp: Camp) => {
     if (role === "STUDENT" && camp.status === "PREPARING") {
+      console.log("Student clicking PREPARING camp, showing join modal for camp:", camp.name); // Add this
       setJoinCamp(camp);
       setJoinCode("");
       setJoinMsg(null);
@@ -210,14 +225,14 @@ export default function DashboardHome() {
               운영중
             </button>
             <button
-              className={`chip ${tab === "PREPARING" ? "on" : ""}`}
-              onClick={() => setTab("PREPARING")}
+              className={`chip ${tab === "UPCOMING" ? "on" : ""}`}
+              onClick={() => setTab("UPCOMING")}
             >
               시작대기
             </button>
             <button
-              className={`chip ${tab === "FINISHED" ? "on" : ""}`}
-              onClick={() => setTab("FINISHED")}
+              className={`chip ${tab === "ENDED" ? "on" : ""}`}
+              onClick={() => setTab("ENDED")}
             >
               종료
             </button>
@@ -241,6 +256,9 @@ export default function DashboardHome() {
           <span className={`role ${role}`}>{role}</span>
           <button className="gear" title="설정" onClick={() => nav("/settings")}>
             ⚙️
+          </button>
+          <button className="gbtn" onClick={handleLogout}>
+            <span className="gbtn-label">로그아웃</span>
           </button>
         </div>
       </div>
@@ -392,6 +410,16 @@ export default function DashboardHome() {
                 onChange={onForm}
                 placeholder="https://..."
               />
+              <label>인원수</label>
+              <input
+                type="number"
+                name="capacity"
+                className="ipt"
+                value={form.capacity}
+                onChange={onForm}
+                required
+                min="1"
+              />
               <label>설명</label>
               <textarea
                 name="description"
@@ -437,6 +465,56 @@ export default function DashboardHome() {
                 </button>
               </div>
               {joinMsg && <div className="join-msg">{joinMsg}</div>}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showJoinCodeInputModal && (
+        <div className="modal-bg" onClick={() => setShowJoinCodeInputModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>캠프 참여하기</h3>
+            <form
+              className="form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await http(`/api/camps/join`, {
+                    method: "POST",
+                    body: JSON.stringify({ inviteCode: joinCode }),
+                  });
+                  alert("캠프에 성공적으로 참여했습니다!");
+                  setShowJoinCodeInputModal(false);
+                  setJoinCode("");
+                  fetchAllCamps();
+                  fetchMyCamps();
+                } catch (err: unknown) {
+                  if (err instanceof Error) {
+                    alert(`캠프 참여 실패: ${err.message || "유효하지 않은 코드입니다."}`);
+                  }
+                }
+              }}
+            >
+              <label>캠프 초대 코드를 입력해주세요</label>
+              <input
+                className="ipt"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                placeholder="예: FE-START99"
+                required
+              />
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => setShowJoinCodeInputModal(false)}
+                >
+                  취소
+                </button>
+                <button type="submit" className="gbtn">
+                  <span className="gbtn-label">참여</span>
+                </button>
+              </div>
             </form>
           </div>
         </div>

@@ -52,6 +52,9 @@ public class Camp {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
+    private int capacity; // Add capacity field
+
     @Builder
     public Camp(User creator, String name, String description, String homepageUrl, LocalDate startDate,
             LocalDate endDate, CampStatus status, String inviteCode, int capacity) {
