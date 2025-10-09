@@ -3,6 +3,7 @@ package devcamphub.backend.controller;
 import devcamphub.backend.dto.AttendanceResponse;
 import devcamphub.backend.dto.CampResponse;
 import devcamphub.backend.dto.MyProfileResponse;
+import devcamphub.backend.dto.ProfileUpdateRequest;
 import devcamphub.backend.service.MyPageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
