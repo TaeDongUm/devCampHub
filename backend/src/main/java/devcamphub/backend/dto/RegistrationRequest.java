@@ -1,3 +1,5 @@
+package devcamphub.backend.dto;
+
 import devcamphub.backend.domain.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
