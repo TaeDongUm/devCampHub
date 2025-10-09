@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +52,21 @@ public class ChatService {
         // 5. 해당 채널을 구독하고 있는 클라이언트들에게 메시지를 전송(broadcast)합니다.
         String destination = "/topic/chat/" + campId + "/" + messageDto.getChannel();
         messagingTemplate.convertAndSend(destination, messageDto);
+    }
+
+    public List<ChatMessageDto> getChatHistory(Long campId, String channel) {
+        // 캠프와 채널에 해당하는 메시지를 조회합니다.
+        List<ChannelChatMessage> messages = chatMessageRepository.findByCampIdAndChannelOrderByCreatedAtAsc(campId, channel);
+
+        // 조회된 메시지를 ChatMessageDto 리스트로 변환합니다.
+        return messages.stream().map(message -> {
+            ChatMessageDto dto = new ChatMessageDto();
+            dto.setChannel(message.getChannel());
+            dto.setSender(message.getAuthor().getNickname()); // User 엔티티에서 닉네임 가져오기
+            dto.setContent(message.getContent());
+            dto.setTimestamp(formatTimestamp(message.getCreatedAt()));
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     private String formatTimestamp(LocalDateTime localDateTime) {

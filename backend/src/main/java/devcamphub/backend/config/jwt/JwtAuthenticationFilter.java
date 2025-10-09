@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,6 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -29,20 +31,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String userEmail;
 
+        log.debug("Processing request for URI: {}", request.getRequestURI());
+
         // 1. Authorization 헤더가 없거나 "Bearer "로 시작하지 않으면 필터를 통과시킵니다.
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.debug("No JWT token found or invalid Authorization header for URI: {}", request.getRequestURI());
             filterChain.doFilter(request, response);
             return;
         }
 
         // 2. "Bearer " 부분을 제외한 실제 JWT를 추출합니다.
         jwt = authHeader.substring(7);
+        log.debug("Extracted JWT: {}", jwt);
         userEmail = jwtUtil.extractUsername(jwt);
+        log.debug("Extracted user email: {}", userEmail);
 
         // 3. 이메일이 존재하고, 아직 SecurityContext에 인증 정보가 없는 경우
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             // 4. DB에서 사용자 정보를 조회합니다.
             UserDetails userDetails = this.userService.loadUserByUsername(userEmail);
+            log.debug("Loaded UserDetails for user: {}", userEmail);
 
             // 5. 토큰이 유효한지 검증합니다.
             if (jwtUtil.validateToken(jwt, userDetails)) {
@@ -58,7 +66,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 // 7. SecurityContext에 인증 정보를 설정합니다.
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                log.debug("Successfully authenticated user: {}", userEmail);
+            } else {
+                log.debug("JWT token validation failed for user: {}", userEmail);
             }
+        } else if (userEmail == null) {
+            log.debug("User email could not be extracted from JWT for URI: {}", request.getRequestURI());
+        } else {
+            log.debug("User already authenticated for URI: {}", request.getRequestURI());
         }
         // 8. 다음 필터로 요청을 전달합니다.
         filterChain.doFilter(request, response);

@@ -39,6 +39,7 @@ function decodeJwt(token: string): JwtPayload | null {
 
 /* ===== Component ===== */
 export default function CampDetail() {
+  // @ts-ignore
   const { campId = "" } = useParams();
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
@@ -114,6 +115,7 @@ export default function CampDetail() {
   const showCheckinBtn = role === "STUDENT" && ch === "mogakco" && !isStreaming;
   const showCheckout = isMyStreamVisible;
   const hideHeaderTabs = isMyStreamVisible;
+  const broadcastChannel = `chat:${ch}:${campId}`;
 
   return (
     <div className="camp">
@@ -149,7 +151,7 @@ export default function CampDetail() {
           <HeroCard title="devCampHub" subtitle="출석, 소통, 방송을 한 곳에서" className="mb-4" />
           <section className="switch-area">
             <div className="chat-room-head"><h3>{ch.toUpperCase()}</h3></div>
-            {["notice", "qna", "resources", "lounge", "study"].includes(ch) && <ChatPage channel={`chat:${ch}:${campId}`} placeholder="메시지 보내기" />}
+            {["notice", "qna", "resources", "lounge", "study"].includes(ch) && <ChatPage channel={`chat:${ch}:${campId}`} placeholder="메시지 보내기" nickname={nickname} />}
             {(ch === "live" || ch === "mogakco") && (
               <div className="board" style={{ padding: 16 }}>
                 {!hideHeaderTabs && (
@@ -158,13 +160,12 @@ export default function CampDetail() {
                   </div>
                 )}
                 {isMyStreamVisible ? (
-                  <MyBroadcastView meta={meta} nickname={nickname} avatar={myAvatar} viewers={Object.keys(remoteStreams).length + 1} participants={Object.keys(remoteStreams)} onToggle={toggle} onCheckout={endStreaming} localVideoRef={localVideoRef} campId={campId} />
+                  <MyBroadcastView meta={meta} nickname={nickname} avatar={myAvatar} viewers={Object.keys(remoteStreams).length + 1} participants={Object.keys(remoteStreams)} onToggle={toggle} onCheckout={endStreaming} localVideoRef={localVideoRef} remoteStreams={remoteStreams} broadcastChannel={broadcastChannel} />
                 ) : (
-                  <div className="mine-grid" style={{ gridTemplateColumns: "repeat(12,1fr)" }}>
+                  <div className="video-grid">
                     {Object.entries(remoteStreams).map(([streamNickname, stream]) => (
-                      <div key={streamNickname} className="mine-card" style={{ gridColumn: "span 4" }}>
-                        <RemoteVideoView stream={stream} />
-                        <div className="meta"><strong>{streamNickname}</strong></div>
+                      <div key={streamNickname} className="video-cell">
+                        <RemoteVideoView stream={stream} nickname={streamNickname} />
                       </div>
                     ))}
                     {Object.keys(remoteStreams).length === 0 && <div className="empty" style={{ padding: 20 }}>현재 진행중인 방송이 없습니다.</div>}
@@ -193,28 +194,19 @@ function SideLink({ label, active, onClick }: { label: string; active: boolean; 
   return <button className={`aside-link as-btn ${active ? "active" : ""}`} onClick={onClick}>{label}</button>;
 }
 
-function MyBroadcastView({ meta, nickname, avatar, viewers, participants, onToggle, onCheckout, localVideoRef, campId }: { meta: Omit<StreamMeta, "type">; nickname: string; avatar?: string; viewers: number; participants: string[]; onToggle: (key: ToggleKey) => void; onCheckout: () => void; localVideoRef: React.RefObject<HTMLVideoElement | null>; campId: string; }) {
+function MyBroadcastView({ meta, nickname, avatar, viewers, participants, onToggle, onCheckout, localVideoRef, remoteStreams, broadcastChannel }: { meta: Omit<StreamMeta, "type">; nickname: string; avatar?: string; viewers: number; participants: string[]; onToggle: (key: ToggleKey) => void; onCheckout: () => void; localVideoRef: React.RefObject<HTMLVideoElement | null>; remoteStreams: Record<string, MediaStream>; broadcastChannel: string; }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 360px", gap: 16 }}>
-      <div style={{ position: "relative" }}>
-        <video ref={localVideoRef} autoPlay playsInline muted className={`video-surface ${meta.camOn ? "on" : ""}`} style={{ height: 560, width: "100%", objectFit: "cover", background: "#222" }} />
-        <div style={{ position: "absolute", left: 16, bottom: 16, display: "flex", gap: 12, alignItems: "center", background: "rgba(0,0,0,.45)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 12, padding: "10px 14px", backdropFilter: "blur(4px)" }}>
-          <div style={{ display: "grid" }}>
-            <div style={{ fontWeight: 800 }}>{meta.title || "제목 없는 방송"}</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, opacity: 0.9 }}>
-              <span style={{ fontSize: 18 }}>{avatar || "🙂"}</span>
-              <span>{nickname}</span>
-              <span>· {meta.track}</span>
-              <span>· {viewers}명 시청 중</span>
-            </div>
+      <div className="video-grid">
+        <div className="video-cell">
+          <video ref={localVideoRef} autoPlay playsInline muted className={`video-surface ${meta.camOn ? "on" : ""}`} style={{ height: "100%", width: "100%", objectFit: "cover", background: "#222" }} />
+          <div className="nickname">{nickname} (나)</div>
+        </div>
+        {Object.entries(remoteStreams).map(([peerNickname, stream]) => (
+          <div key={peerNickname} className="video-cell">
+            <RemoteVideoView stream={stream} nickname={peerNickname} />
           </div>
-          <button className="btn sm danger" onClick={onCheckout}>체크아웃</button>
-        </div>
-        <div style={{ position: "absolute", right: 16, bottom: 16, display: "flex", gap: 8 }}>
-          <button className="icon-btn" title={meta.micOn ? "마이크 켜짐" : "마이크 음소거"} onClick={() => onToggle("micOn")}>{meta.micOn ? "🎙️" : "🔇"}</button>
-          <button className="icon-btn" title={meta.camOn ? "카메라 끄기" : "카메라 켜기"} onClick={() => onToggle("camOn")}>{meta.camOn ? "📷" : "🚫📷"}</button>
-          <button className="icon-btn" title={meta.screenOn ? "화면 공유 끄기" : "화면 공유 켜기"} onClick={() => onToggle("screenOn")}>{meta.screenOn ? "🖥️" : "🚫🖥️"}</button>
-        </div>
+        ))}
       </div>
       <div style={{ display: "grid", gap: 12 }}>
         <div className="mine" style={{ padding: 12, maxHeight: 220, overflow: "auto" }}>
@@ -223,16 +215,21 @@ function MyBroadcastView({ meta, nickname, avatar, viewers, participants, onTogg
             {participants.length === 0 ? <div className="muted">아직 참여자가 없어요.</div> : participants.map((name, idx) => <div key={`${name}-${idx}`} className="chip" style={{ justifyContent: "flex-start" }}>{name}</div>)}
           </div>
         </div>
-        <div><ChatPage channel={`chat:my-broadcast:${campId}`} placeholder="채팅 입력…" /></div>
+        <ChatPage channel={broadcastChannel} placeholder="채팅 입력…" nickname={nickname} />
       </div>
     </div>
   );
 }
 
-function RemoteVideoView({ stream }: { stream: MediaStream }) {
+function RemoteVideoView({ stream, nickname }: { stream: MediaStream; nickname: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => { if (videoRef.current) { videoRef.current.srcObject = stream; } }, [stream]);
-  return <video ref={videoRef} autoPlay playsInline style={{ width: "100%", height: 140, objectFit: "cover", background: "#222" }} />;
+  return (
+    <>
+      <video ref={videoRef} autoPlay playsInline style={{ width: "100%", height: "100%", objectFit: "cover", background: "#222" }} />
+      <div className="nickname">{nickname}</div>
+    </>
+  );
 }
 
 function CheckinForm({ defaultTitle, defaultTrack, defaultMic, defaultCam, defaultScreen, onCancel, onStart }: { defaultTitle?: string; defaultTrack: Track; defaultMic: boolean; defaultCam: boolean; defaultScreen: boolean; onCancel: () => void; onStart: (v: Omit<StreamMeta, "type">) => void; }) {

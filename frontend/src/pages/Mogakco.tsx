@@ -1,13 +1,47 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import ChatPage from "./ChatPage";
 import { http } from "../api/http";
 import { type StreamResponseDto } from "./LiveLecture"; // 타입 재사용
 
+// CampDetail.tsx에서 복사해온 decodeJwt 함수
+interface JwtPayload {
+  sub: string; // email
+  role: "ADMIN" | "STUDENT";
+  nickname: string;
+  iat: number;
+  exp: number;
+}
+
+function decodeJwt(token: string): JwtPayload | null {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
 export default function Mogakco({ campId }: { campId: string }) {
   const [streams, setStreams] = useState<StreamResponseDto[]>([]);
   const [watch, setWatch] = useState<StreamResponseDto | null>(null);
+  const [nickname, setNickname] = useState("익명"); // nickname 상태 추가
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const payload = decodeJwt(token);
+      if (payload) {
+        setNickname(payload.nickname);
+      }
+    }
+
     const fetchMogakcoStreams = async () => {
       try {
         const allStreams = await http<StreamResponseDto[]>(`/api/camps/${campId}/streams`);
@@ -55,7 +89,7 @@ export default function Mogakco({ campId }: { campId: string }) {
             <div className="video-surface on" style={{ height: 320 }}>
               🙋 {watch.ownerNickname} 님 방송 (가상 플레이어)
             </div>
-            <ChatPage key={`chat-mogakco-${watch.streamId}`} channel={`mogakco-${watch.streamId}`} />
+            <ChatPage key={`chat-mogakco-${watch.streamId}`} channel={`mogakco-${watch.streamId}`} nickname={nickname} /> {/* nickname prop 추가 */}
             <div className="modal-actions">
               <button className="btn ghost" onClick={() => setWatch(null)}>
                 닫기

@@ -1,5 +1,4 @@
 // src/components/HeroCardIllustrated.tsx
-import React from "react";
 import HeroCard from "./HeroCard";
 
 /** devCampHub 느낌의 간단한 랩탑+방송 SVG */

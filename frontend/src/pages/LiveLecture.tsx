@@ -1,6 +1,31 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { http } from "../api/http";
 import ChatPage from "./ChatPage";
+
+// CampDetail.tsx에서 복사해온 decodeJwt 함수
+interface JwtPayload {
+  sub: string; // email
+  role: "ADMIN" | "STUDENT";
+  nickname: string;
+  iat: number;
+  exp: number;
+}
+
+function decodeJwt(token: string): JwtPayload | null {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
 
 export interface StreamResponseDto {
   streamId: number;
@@ -11,8 +36,17 @@ export interface StreamResponseDto {
 
 export default function LiveLecture({ campId }: { campId: string }) {
   const [lectureStream, setLectureStream] = useState<StreamResponseDto | null>(null);
+  const [nickname, setNickname] = useState("익명"); // nickname 상태 추가
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const payload = decodeJwt(token);
+      if (payload) {
+        setNickname(payload.nickname);
+      }
+    }
+
     const fetchLectureStream = async () => {
       try {
         const streams = await http<StreamResponseDto[]>(`/api/camps/${campId}/streams`);
@@ -40,6 +74,7 @@ export default function LiveLecture({ campId }: { campId: string }) {
             <ChatPage
               key={`chat-lecture-${lectureStream.streamId}`}
               channel={`lecture-${lectureStream.streamId}`}
+              nickname={nickname} // nickname prop 추가
             />
           </div>
         </>

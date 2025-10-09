@@ -1,4 +1,3 @@
-import React from "react";
 import "../styles/SignupChoice.css";
 
 export default function SignupChoice() {

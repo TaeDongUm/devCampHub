@@ -1,4 +1,4 @@
-import React from "react";
+
 import "../styles/Home.css";
 
 type Props = { onStart?: () => void };

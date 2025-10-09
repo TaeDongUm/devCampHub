@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
 import { useChat, type ChatMessage } from "../hooks/useChat";
 
-// --- 헬퍼 함수들 ---
+// --- 헬퍼 함수들 (Helper functions remain the same) ---
 type FileItem = { name: string; url: string; type: string };
-const URL_RE = /\b((?:https?:\/|www\.)[^\s<>"')\]]+)/gi;
+const URL_RE = /\b((?:https?:\/|www\.)[^\s<>")\]]+)/gi;
 
 function extractFencedCodeLoose(text: string): { code?: string; plain: string } {
   const start = text.indexOf("```");
@@ -68,15 +67,14 @@ const parseMessageContent = (content: string) => {
 // --- 컴포넌트 Props 정의 ---
 interface ChatPageProps {
   channel: string;
+  nickname: string; // nickname을 prop으로 받습니다.
   placeholder?: string;
 }
 
 // --- 메인 컴포넌트 ---
-export default function ChatPage({ channel, placeholder }: ChatPageProps) {
-  const { campId = "" } = useParams<{ campId: string }>();
-  const nickname = localStorage.getItem("nickname") || "익명";
-
-  const { messages, sendMessage } = useChat(campId, channel, nickname);
+export default function ChatPage({ channel, nickname, placeholder }: ChatPageProps) {
+  // useChat 훅을 새로운 시그니처에 맞게 호출합니다.
+  const { messages, sendMessage } = useChat(channel, nickname);
 
   const [text, setText] = useState<string>("");
   const [showEmoji, setShowEmoji] = useState(false);
@@ -165,7 +163,7 @@ export default function ChatPage({ channel, placeholder }: ChatPageProps) {
 
   return (
     <div className="chat-page">
-      <div className="chat-list" ref={listRef}>
+       <div className="chat-list" ref={listRef}>
         {grouped.length === 0 && <div className="chat-empty">첫 메시지를 남겨보세요.</div>}
         {grouped.map(([k, arr]) => (
           <div key={k}>
@@ -175,33 +173,38 @@ export default function ChatPage({ channel, placeholder }: ChatPageProps) {
               </span>
             </div>
             {arr.map((m, idx) => (
-              <div key={idx} className="chat-msg">
+              <div key={idx} className={`chat-msg ${m.sender === nickname ? 'mine' : ''}`}>
                 <div className="chat-who">{m.sender}</div>
-                <div className="chat-body">
-                  {m.parsedContent.text && (
-                    <div className="chat-text">{renderText(m.parsedContent.text)}</div>
-                  )}
-                  {m.parsedContent.code && (
-                    <pre className="chat-code">
-                      <code>{m.parsedContent.code}</code>
-                    </pre>
-                  )}
-                  {Array.isArray(m.parsedContent.files) && m.parsedContent.files.length > 0 && (
-                    <div className="attach-preview" style={{ marginTop: 8 }}>
-                      {m.parsedContent.files.map((f: FileItem, fIdx: number) =>
-                        f.type.startsWith("image/") ? (
-                          <div className="file-thumb" key={fIdx}>
-                            <img src={f.url} alt={f.name} />
-                            <div className="file-cap">{f.name}</div>
-                          </div>
-                        ) : (
-                          <a className="file-link" key={fIdx} href={f.url} download={f.name}>
-                            {f.name}
-                          </a>
-                        )
-                      )}
+                <div className="chat-bubble-container">
+                  <div className="chat-content-wrapper"> {/* New wrapper div */}
+                    <div className="chat-body">
+                    {m.parsedContent.text && (
+                      <div className="chat-text">{renderText(m.parsedContent.text)}</div>
+                    )}
+                    {m.parsedContent.code && (
+                      <pre className="chat-code">
+                        <code>{m.parsedContent.code}</code>
+                      </pre>
+                    )}
+                    {Array.isArray(m.parsedContent.files) && m.parsedContent.files.length > 0 && (
+                      <div className="attach-preview" style={{ marginTop: 8 }}>
+                        {m.parsedContent.files.map((f: FileItem, fIdx: number) =>
+                          f.type.startsWith("image/") ? (
+                            <div className="file-thumb" key={fIdx}>
+                              <img src={f.url} alt={f.name} />
+                              <div className="file-cap">{f.name}</div>
+                            </div>
+                          ) : (
+                            <a className="file-link" key={fIdx} href={f.url} download={f.name}>
+                              {f.name}
+                            </a>
+                          )
+                        )}
+                      </div>
+                    )}
                     </div>
-                  )}
+                  </div>
+                  <div className="chat-timestamp">{m.timestamp}</div>
                 </div>
               </div>
             ))}
@@ -210,37 +213,12 @@ export default function ChatPage({ channel, placeholder }: ChatPageProps) {
       </div>
       <form className="chat-form" onSubmit={onSubmit}>
         <div className="chat-toolbar">
-          <button
-            type="button"
-            className="tb-btn"
-            title="파일 추가"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            ⊕
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            style={{ display: "none" }}
-            onChange={onPickFiles}
-            accept="image/*,application/pdf,text/plain,application/zip,application/json"
-          />
-          <button
-            type="button"
-            className="tb-btn"
-            title="이모지"
-            onClick={() => setShowEmoji((v) => !v)}
-          >
-            🙂
-          </button>
+          <button type="button" className="tb-btn" title="파일 추가" onClick={() => fileInputRef.current?.click()}>⊕</button>
+          <input ref={fileInputRef} type="file" multiple style={{ display: "none" }} onChange={onPickFiles} accept="image/*,application/pdf,text/plain,application/zip,application/json" />
+          <button type="button" className="tb-btn" title="이모지" onClick={() => setShowEmoji((v) => !v)}>🙂</button>
           {showEmoji && (
             <div className="emoji-pop">
-              {EMOJIS.map((e) => (
-                <button key={e} type="button" className="emoji" onClick={() => insertAtCursor(e)}>
-                  {e}
-                </button>
-              ))}
+              {EMOJIS.map((e) => <button key={e} type="button" className="emoji" onClick={() => insertAtCursor(e)}>{e}</button>)}
             </div>
           )}
         </div>
@@ -254,32 +232,15 @@ export default function ChatPage({ channel, placeholder }: ChatPageProps) {
                     <div className="file-cap">{f.name}</div>
                   </div>
                 ) : (
-                  <span className="file-link" key={idx}>
-                    {f.name}
-                  </span>
+                  <span className="file-link" key={idx}>{f.name}</span>
                 )
               )}
             </div>
           </div>
         )}
         <div className="chat-input-box">
-          <textarea
-            ref={textareaRef}
-            className="ipt chat-input ta"
-            placeholder={placeholder || "메시지 보내기"}
-            value={text}
-            onChange={onPlainChange}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                doSend();
-              }
-            }}
-            rows={2}
-          />
-          <button type="submit" className="btn send-btn">
-            보내기
-          </button>
+          <textarea ref={textareaRef} className="ipt chat-input ta" placeholder={placeholder || "메시지 보내기"} value={text} onChange={onPlainChange} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); } }} rows={2} />
+          <button type="submit" className="btn send-btn">보내기</button>
         </div>
       </form>
     </div>

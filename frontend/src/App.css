@@ -15,7 +15,7 @@
   filter: drop-shadow(0 0 2em #646cffaa);
 }
 .logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+  filter: drop_shadow(0 0 2em #61dafbaa);
 }
 
 @keyframes logo-spin {
@@ -39,4 +39,26 @@
 
 .read-the-docs {
   color: #888;
+}
+
+.chat-content-wrapper {
+  display: flex; /* Flexbox를 사용하여 자식 요소들을 한 줄에 배치 */
+  align-items: flex-end; /* 타임스탬프를 메시지 내용 아래에 정렬 */
+  gap: 8px; /* 메시지 내용과 타임스탬프 사이 간격 */
+}
+
+.chat-timestamp {
+  font-size: 0.6em; /* 20% 감소 */
+  color: #888;
+  white-space: nowrap; /* 줄바꿈 방지 */
+  flex-shrink: 0; /* 공간이 부족해도 줄어들지 않도록 */
+}
+
+/* 메시지가 내 것일 경우 타임스탬프를 오른쪽으로 밀어내기 */
+.chat-msg.mine .chat-content-wrapper {
+  justify-content: flex-end; /* 내 메시지일 경우 내용을 오른쪽으로 정렬 */
+}
+
+.chat-msg.mine .chat-timestamp {
+  order: -1; /* 내 메시지일 경우 타임스탬프를 메시지 내용 앞으로 이동 (왼쪽) */
 }

@@ -5,6 +5,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 public interface ChannelChatMessageRepository extends JpaRepository<ChannelChatMessage, Long> {
 
     /**
@@ -14,4 +16,9 @@ public interface ChannelChatMessageRepository extends JpaRepository<ChannelChatM
      */
     Slice<ChannelChatMessage> findByCampIdAndChannelOrderByCreatedAtDesc(Long campId, String channel,
             Pageable pageable);
+
+    /**
+     * 특정 캠프의 특정 채널에 해당하는 메시지를 오래된 순으로 조회합니다.
+     */
+    List<ChannelChatMessage> findByCampIdAndChannelOrderByCreatedAtAsc(Long campId, String channel);
 }

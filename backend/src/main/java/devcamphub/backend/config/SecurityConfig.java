@@ -1,6 +1,7 @@
 package devcamphub.backend.config;
 
 import devcamphub.backend.config.jwt.JwtAuthenticationFilter;
+import devcamphub.backend.config.jwt.TestFilter; // TestFilter import 추가
 import devcamphub.backend.domain.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -61,26 +62,10 @@ public class SecurityConfig {
                 // 세션 관리 정책을 STATELESS로 설정
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // HTTP 요청에 대한 인가 규칙 설정
-                .authorizeHttpRequests(authorize -> authorize
-                        // 인증 API, WebSocket 접속 경로는 모두에게 허용
-                        .requestMatchers("/api/auth/**", "/ws/**").permitAll()
-                        // 캠프 생성, 수정, 삭제는 ADMIN 역할만 가능
-                        .requestMatchers(HttpMethod.POST, "/api/camps").hasAuthority(Role.ADMIN.name())
-                        .requestMatchers(HttpMethod.PATCH, "/api/camps/*").hasAuthority(Role.ADMIN.name())
-                        .requestMatchers(HttpMethod.DELETE, "/api/camps/*").hasAuthority(Role.ADMIN.name())
-                        // 캠프 참여는 STUDENT 역할만 가능
-                        .requestMatchers(HttpMethod.POST, "/api/camps/*/join").hasAuthority(Role.STUDENT.name())
-                        // 마이페이지 관련 API는 인증된 사용자 모두에게 허용
-                        .requestMatchers("/api/me/**").authenticated()
-                        // 스트림 이벤트는 인증된 사용자 모두에게 허용
-                        .requestMatchers("/api/streams/events").authenticated()
-                        // 캠프 조회는 인증된 사용자 모두에게 허용
-                        .requestMatchers(HttpMethod.GET, "/api/camps", "/api/camps/**").authenticated()
-                        // 그 외 모든 요청은 인증 필요
-                        .anyRequest().authenticated()
-                )
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll()) // 모든 요청 허용 (임시)
                 // 직접 구현한 JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new TestFilter(), JwtAuthenticationFilter.class); // TestFilter 추가
 
         return http.build();
     }
