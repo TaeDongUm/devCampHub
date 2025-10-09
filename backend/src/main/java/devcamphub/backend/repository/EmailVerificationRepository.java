@@ -7,6 +7,8 @@ import java.util.Optional;
 
 public interface EmailVerificationRepository extends JpaRepository<EmailVerification, Long> {
 
+    Optional<EmailVerification> findByEmail(String email);
+
     /**
      * 특정 이메일에 대해 가장 최근에 생성된 인증 정보를 조회합니다.
      * (만료 시간 내림차순으로 정렬하여 첫 번째 결과를 가져옴)
