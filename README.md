@@ -173,3 +173,5 @@ graph LR
 
 ---
 
+## 📁 8. 기술 선택 이유
+[기술 선택 이유](https://github.com/TaeDongUm/devCampHub/wiki/%EA%B8%B0%EC%88%A0-%EC%84%A0%ED%83%9D-%EC%9D%B4%EC%9C%A0)
