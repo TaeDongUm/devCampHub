@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useChat, type ChatMessage } from "../hooks/useChat";
 
-// --- 원본 헬퍼 함수들 복원 ---
+// --- 헬퍼 함수들 ---
 type FileItem = { name: string; url: string; type: string };
-const URL_RE = /\b((?:https?:\/\/|www\.)[^\s<>"')\]]+)/gi;
+const URL_RE = /\b((?:https?:\/|www\.)[^\s<>"')\]]+)/gi;
 
 function extractFencedCodeLoose(text: string): { code?: string; plain: string } {
   const start = text.indexOf("```");
@@ -65,8 +65,15 @@ const parseMessageContent = (content: string) => {
   }
 };
 
-export default function ChatPage() {
-  const { campId = "", channel = "default" } = useParams<{ campId: string; channel: string }>();
+// --- 컴포넌트 Props 정의 ---
+interface ChatPageProps {
+  channel: string;
+  placeholder?: string;
+}
+
+// --- 메인 컴포넌트 ---
+export default function ChatPage({ channel, placeholder }: ChatPageProps) {
+  const { campId = "" } = useParams<{ campId: string }>();
   const nickname = localStorage.getItem("nickname") || "익명";
 
   const { messages, sendMessage } = useChat(campId, channel, nickname);
@@ -259,7 +266,7 @@ export default function ChatPage() {
           <textarea
             ref={textareaRef}
             className="ipt chat-input ta"
-            placeholder={"메시지 보내기"}
+            placeholder={placeholder || "메시지 보내기"}
             value={text}
             onChange={onPlainChange}
             onKeyDown={(e) => {
