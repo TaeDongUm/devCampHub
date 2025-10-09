@@ -10,6 +10,7 @@ import devcamphub.backend.repository.UserRepository;
 import devcamphub.backend.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -30,7 +31,6 @@ import java.time.LocalDateTime;
 import java.util.Random;
 
 @Service
-@RequiredArgsConstructor
 public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
@@ -39,6 +39,15 @@ public class UserService implements UserDetailsService {
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
+
+    public UserService(UserRepository userRepository, EmailVerificationRepository emailVerificationRepository, @Lazy PasswordEncoder passwordEncoder, JwtUtil jwtUtil, @Lazy AuthenticationManager authenticationManager, EmailService emailService) {
+        this.userRepository = userRepository;
+        this.emailVerificationRepository = emailVerificationRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
+        this.authenticationManager = authenticationManager;
+        this.emailService = emailService;
+    }
 
     @Value("classpath:templates/verification-email.html")
     private ClassPathResource emailTemplateResource;
