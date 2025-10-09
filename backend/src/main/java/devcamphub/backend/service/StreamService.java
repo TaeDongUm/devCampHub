@@ -37,7 +37,6 @@ public class StreamService {
                 .owner(user)
                 .title(request.title())
                 .type(request.type())
-                .status(StreamStatus.ACTIVE)
                 .build();
 
         Stream savedStream = streamRepository.save(newStream);
