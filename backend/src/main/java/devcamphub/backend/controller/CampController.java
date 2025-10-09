@@ -87,6 +87,19 @@ public class CampController {
         return ResponseEntity.ok(updatedCamp);
     }
 
+    @PatchMapping("/{campId}/regenerate-code")
+    public ResponseEntity<CampResponse> regenerateInviteCode(
+            @PathVariable Long campId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        CampResponse updatedCamp = campService.regenerateInviteCode(campId, userDetails.getUsername());
+        return ResponseEntity.ok(updatedCamp);
+    }
+
     @DeleteMapping("/{campId}")
     public ResponseEntity<Void> deleteCamp(
             @PathVariable Long campId,

@@ -47,6 +47,7 @@ public class CampService {
                 .description(request.description())
                 .capacity(request.capacity())
                 .homepageUrl(request.homepageUrl())
+                .institutionName(request.institutionName())
                 .startDate(request.startDate())
                 .endDate(request.endDate())
                 .status(status)
@@ -169,6 +170,29 @@ public class CampService {
 
         // 4. 캠프 삭제
         campRepository.delete(camp);
+    }
+
+    @Transactional
+    public CampResponse regenerateInviteCode(Long campId, String userEmail) {
+        // 1. 캠프와 사용자 조회
+        Camp camp = campRepository.findById(campId)
+                .orElseThrow(() -> new IllegalArgumentException("캠프를 찾을 수 없습니다: " + campId));
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userEmail));
+
+        // 2. 권한 확인 (캠프 생성자인지)
+        if (!camp.getCreator().getId().equals(user.getId())) {
+            throw new IllegalStateException("초대 코드를 재생성할 권한이 없습니다.");
+        }
+
+        // 3. 새로운 고유 코드 생성
+        String newCode = generateUniqueInviteCode();
+
+        // 4. 엔티티의 코드 업데이트 메소드 호출
+        camp.regenerateInviteCode(newCode);
+
+        // 5. 변경된 정보를 DTO로 변환하여 반환 (변경 감지로 인해 자동 저장)
+        return CampResponse.from(camp);
     }
 
     private String generateUniqueInviteCode() {

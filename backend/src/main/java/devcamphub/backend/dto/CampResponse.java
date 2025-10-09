@@ -13,8 +13,10 @@ public record CampResponse(
         LocalDate endDate,
         CampStatus status,
         String inviteCode,
-        String creatorName
-) {
+        String creatorName,
+        String institutionName,
+        Integer capacity,
+        int currentMembers) {
     public static CampResponse from(Camp camp) {
         return new CampResponse(
                 camp.getId(),
@@ -25,7 +27,9 @@ public record CampResponse(
                 camp.getEndDate(),
                 camp.getStatus(),
                 camp.getInviteCode(),
-                camp.getCreator().getNickname()
-        );
+                camp.getCreator().getNickname(),
+                camp.getInstitutionName(),
+                camp.getCapacity(),
+                camp.getCampMembers().size());
     }
 }

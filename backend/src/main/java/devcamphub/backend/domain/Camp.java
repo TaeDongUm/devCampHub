@@ -10,6 +10,8 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "camps")
@@ -25,6 +27,9 @@ public class Camp {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creator_id", nullable = false)
     private User creator;
+
+    @OneToMany(mappedBy = "camp", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CampMember> campMembers = new ArrayList<>();
 
     @Column(nullable = false)
     private String name;
@@ -53,15 +58,19 @@ public class Camp {
     private LocalDateTime createdAt;
 
     @Column(nullable = false)
-    private int capacity; // Add capacity field
+    private int capacity;
+
+    @Column(name = "institution_name", nullable = false, length = 100)
+    private String institutionName;
 
     @Builder
     public Camp(User creator, String name, String description, String homepageUrl, LocalDate startDate,
-            LocalDate endDate, CampStatus status, String inviteCode, int capacity) {
+            LocalDate endDate, CampStatus status, String inviteCode, int capacity, String institutionName) {
         this.creator = creator;
         this.name = name;
         this.description = description;
         this.homepageUrl = homepageUrl;
+        this.institutionName = institutionName;
         this.startDate = startDate;
         this.endDate = endDate;
         this.status = status;
@@ -95,5 +104,9 @@ public class Camp {
         } else {
             this.status = CampStatus.ONGOING;
         }
+    }
+
+    public void regenerateInviteCode(String newCode) {
+        this.inviteCode = newCode;
     }
 }
