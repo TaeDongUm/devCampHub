@@ -55,18 +55,23 @@ export default function DashboardHome() {
   const [camps, setCamps] = useState<Camp[]>([]);
   const [myCamps, setMyCamps] = useState<Camp[]>([]); // TODO: 내 캠프 API 연동 필요
 
-  const fetchCamps = () => {
+  const fetchAllCamps = () => {
     http<Camp[]>("/api/camps")
-      .then((data) => {
-        if (data) {
-          setCamps(data);
-          // TODO: "내 캠프" 목록은 별도 API(/api/me/camps)로 가져와야 함. 지금은 전체 목록으로 임시 처리.
-          setMyCamps(data);
-        }
+      .then(data => {
+        if (data) setCamps(data);
       })
-      .catch((err) => {
-        console.error("캠프 목록 로딩 실패:", err);
-        alert("캠프 목록을 불러오는 데 실패했습니다.");
+      .catch(err => {
+        console.error("전체 캠프 목록 로딩 실패:", err);
+      });
+  };
+
+  const fetchMyCamps = () => {
+    http<Camp[]>("/api/me/camps") // 내 캠프 목록 API 호출
+      .then(data => {
+        if (data) setMyCamps(data);
+      })
+      .catch(err => {
+        console.error("내 캠프 목록 로딩 실패:", err);
       });
   };
 
@@ -81,7 +86,9 @@ export default function DashboardHome() {
     } else {
       nav("/login");
     }
-    fetchCamps();
+    // 전체 캠프와 내 캠프 목록을 각각 불러옴
+    fetchAllCamps();
+    fetchMyCamps();
   }, [nav]);
 
   type Tab = "ONGOING" | "PREPARING" | "FINISHED";
@@ -137,7 +144,8 @@ export default function DashboardHome() {
         alert(`캠프가 생성되었습니다. 초대 코드: ${newCamp.inviteCode}`);
       }
       setShowCreate(false);
-      fetchCamps();
+      fetchAllCamps();
+      fetchMyCamps();
     } catch (err: unknown) {
       if (err instanceof Error) {
         alert(`캠프 생성 실패: ${err.message}`);
@@ -155,7 +163,8 @@ export default function DashboardHome() {
         body: JSON.stringify({ inviteCode: joinCode }),
       });
       setJoinMsg("✅ 인증되었습니다. 이동합니다...");
-      fetchCamps();
+      fetchAllCamps();
+      fetchMyCamps();
       setTimeout(() => nav(`/camp/${joinCamp.id}`), 800);
     } catch (err: unknown) {
       if (err instanceof Error) {
