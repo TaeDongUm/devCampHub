@@ -24,7 +24,7 @@ export function useStreamSession(campId: string, nickname: string) {
   const [streamId, setStreamId] = useState<number | null>(null);
   const [meta, setMeta] = useState<Partial<StreamMeta>>({});
   
-  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
 
@@ -57,19 +57,18 @@ export function useStreamSession(campId: string, nickname: string) {
     try {
       const stream = await http<StreamResponseDto>(`/api/camps/${campId}/streams`, {
         method: 'POST',
-        body: JSON.stringify({ title: initialMeta.title, type: initialMeta.type })
+        body: JSON.stringify({ title: initialMeta.title, type: initialMeta.type, track: initialMeta.track })
       });
-      const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const localStream = await navigator.mediaDevices.getUserMedia({ video: initialMeta.camOn, audio: initialMeta.micOn });
       localStreamRef.current = localStream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = localStream;
-      }
+      setLocalStream(localStream);
       
       setMeta(initialMeta);
       setStreamId(stream.streamId);
       setStreaming(true);
     } catch (err) {
       console.error("스트리밍 시작 실패:", err);
+      alert("카메라 또는 마이크를 사용할 수 없습니다. 장치가 연결되어 있는지, 브라우저에서 접근 권한이 허용되었는지 확인해주세요.");
     }
   }, [campId]);
 
@@ -77,6 +76,9 @@ export function useStreamSession(campId: string, nickname: string) {
   const end = useCallback(async () => {
     if (!streamId) return;
     await http(`/api/camps/${campId}/streams/${streamId}`, { method: 'DELETE' });
+    localStreamRef.current?.getTracks().forEach(track => track.stop());
+    localStreamRef.current = null;
+    setLocalStream(null);
     setStreaming(false);
     setStreamId(null);
   }, [campId, streamId]);
@@ -88,7 +90,7 @@ export function useStreamSession(campId: string, nickname: string) {
     }
 
     const client = new Client({
-        webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+        webSocketFactory: () => new SockJS('http://localhost:8080/ws-stomp'),
         onConnect: () => {
             client.subscribe(`/topic/signal/${streamId}`, async message => {
                 const signal = JSON.parse(message.body);
@@ -96,7 +98,7 @@ export function useStreamSession(campId: string, nickname: string) {
                 if (sender === nickname) return;
 
                 switch (signal.type) {
-                case 'join': {
+                case 'user-joined': {
                     const pc = createPeerConnection(sender, streamId);
                     const offer = await pc.createOffer();
                     await pc.setLocalDescription(offer);
@@ -121,7 +123,7 @@ export function useStreamSession(campId: string, nickname: string) {
                     if (pc) await pc.addIceCandidate(new RTCIceCandidate(signal.data));
                     break;
                 }
-                case 'leave': {
+                case 'user-left': {
                     if (peerConnections.current[sender]) {
                         peerConnections.current[sender].close();
                         delete peerConnections.current[sender];
@@ -136,7 +138,8 @@ export function useStreamSession(campId: string, nickname: string) {
             }
             });
 
-            client.publish({ destination: `/app/signal/${streamId}`, body: JSON.stringify({ type: 'join', sender: nickname }) });
+            console.log(`>>> useStreamSession: Publishing 'join' message to /app/signal/join for streamId: ${streamId}, sender: ${nickname}`);
+            client.publish({ destination: `/app/signal/join`, body: JSON.stringify({ type: 'join', sender: nickname, data: streamId.toString() }) });
         }
     });
 
@@ -147,6 +150,7 @@ export function useStreamSession(campId: string, nickname: string) {
     return () => {
         localStreamRef.current?.getTracks().forEach(track => track.stop());
         localStreamRef.current = null;
+        setLocalStream(null);
         Object.values(peerConnections.current).forEach(pc => pc.close());
         peerConnections.current = {};
         client.deactivate();
@@ -161,7 +165,7 @@ export function useStreamSession(campId: string, nickname: string) {
     setMeta,
     begin,
     end,
-    localVideoRef,
+    localStream,
     remoteStreams,
   };
 }
