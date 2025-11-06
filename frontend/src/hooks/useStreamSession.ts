@@ -138,8 +138,8 @@ export function useStreamSession(campId: string, nickname: string) {
             }
             });
 
-            console.log(`>>> useStreamSession: Publishing 'join' message to /app/signal/join for streamId: ${streamId}, sender: ${nickname}`);
-            client.publish({ destination: `/app/signal/join`, body: JSON.stringify({ type: 'join', sender: nickname, data: streamId.toString() }) });
+            console.log(`>>> useStreamSession: Publishing 'test' message to /app/test/join`);
+            client.publish({ destination: `/app/test/join`, body: "Hello from client!" });
         }
     });
 
