@@ -36,7 +36,16 @@ export function useStreamSession(campId: string, nickname: string) {
 
     pc.onicecandidate = (event) => {
       if (event.candidate && stompClient.current?.connected) {
-        stompClient.current.publish({ destination: `/app/signal/${currentStreamId}`, body: JSON.stringify({ type: 'ice', sender: nickname, data: event.candidate }) });
+        // ICE Candidate를 특정 수신자(peerNickname)에게 보냅니다.
+        stompClient.current.publish({ 
+          destination: `/app/signal/${currentStreamId}`, 
+          body: JSON.stringify({ 
+            type: 'ice', 
+            sender: nickname, 
+            receiver: peerNickname, 
+            data: event.candidate 
+          }) 
+        });
       }
     };
 
@@ -97,47 +106,63 @@ export function useStreamSession(campId: string, nickname: string) {
                 const sender = signal.sender;
                 if (sender === nickname) return;
 
+                // 메시지가 나에게 온 것이 맞는지 확인
+                if (signal.receiver && signal.receiver !== nickname) return;
+
                 switch (signal.type) {
-                case 'user-joined': {
-                    const pc = createPeerConnection(sender, streamId);
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    client.publish({ destination: `/app/signal/${streamId}`, body: JSON.stringify({ type: 'offer', sender: nickname, data: offer }) });
-                    break;
-                }
-                case 'offer': {
-                    const pc = createPeerConnection(sender, streamId);
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
-                    const answer = await pc.createAnswer();
-                    await pc.setLocalDescription(answer);
-                    client.publish({ destination: `/app/signal/${streamId}`, body: JSON.stringify({ type: 'answer', sender: nickname, data: answer }) });
-                    break;
-                }
-                case 'answer': {
-                    const pc = peerConnections.current[sender];
-                    if (pc) await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
-                    break;
-                }
-                case 'ice': {
-                    const pc = peerConnections.current[sender];
-                    if (pc) await pc.addIceCandidate(new RTCIceCandidate(signal.data));
-                    break;
-                }
-                case 'user-left': {
-                    if (peerConnections.current[sender]) {
-                        peerConnections.current[sender].close();
-                        delete peerConnections.current[sender];
+                  // 새로운 참여자는 기존 참여자 목록을 받음
+                  case 'user-list': {
+                    const users = signal.data as string[];
+                    for (const user of users) {
+                      const pc = createPeerConnection(user, streamId);
+                      const offer = await pc.createOffer();
+                      await pc.setLocalDescription(offer);
+                      client.publish({ destination: `/app/signal/${streamId}`, body: JSON.stringify({ type: 'offer', sender: nickname, receiver: user, data: offer }) });
                     }
-                    setRemoteStreams(prev => {
-                        const newState = { ...prev };
-                        delete newState[sender];
-                        return newState;
-                    });
                     break;
-                }
-            }
+                  }
+                  // 기존 참여자는 새로운 참여자의 합류 소식을 받음
+                  case 'user-joined': {
+                      const pc = createPeerConnection(sender, streamId);
+                      const offer = await pc.createOffer();
+                      await pc.setLocalDescription(offer);
+                      client.publish({ destination: `/app/signal/${streamId}`, body: JSON.stringify({ type: 'offer', sender: nickname, receiver: sender, data: offer }) });
+                      break;
+                  }
+                  case 'offer': {
+                      const pc = createPeerConnection(sender, streamId);
+                      await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+                      const answer = await pc.createAnswer();
+                      await pc.setLocalDescription(answer);
+                      client.publish({ destination: `/app/signal/${streamId}`, body: JSON.stringify({ type: 'answer', sender: nickname, receiver: sender, data: answer }) });
+                      break;
+                  }
+                  case 'answer': {
+                      const pc = peerConnections.current[sender];
+                      if (pc) await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+                      break;
+                  }
+                  case 'ice': {
+                      const pc = peerConnections.current[sender];
+                      if (pc) await pc.addIceCandidate(new RTCIceCandidate(signal.data));
+                      break;
+                  }
+                  case 'user-left': {
+                      if (peerConnections.current[sender]) {
+                          peerConnections.current[sender].close();
+                          delete peerConnections.current[sender];
+                      }
+                      setRemoteStreams(prev => {
+                          const newState = { ...prev };
+                          delete newState[sender];
+                          return newState;
+                      });
+                      break;
+                  }
+              }
             });
 
+            // 서버에 나의 참여를 알림
             client.publish({
                 destination: `/app/signal/join`,
                 body: JSON.stringify({
