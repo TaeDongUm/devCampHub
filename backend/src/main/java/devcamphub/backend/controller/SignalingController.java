@@ -19,10 +19,10 @@ public class SignalingController {
     private final SimpMessageSendingOperations messagingTemplate;
     private final WebSocketSessionRegistry sessionRegistry;
 
-    @PostConstruct
-    public void init() {
-        log.info(">>> SignalingController bean initialized (controller package)");
-    }
+    // @PostConstruct
+    // public void init() {
+    // log.info(">>> SignalingController bean initialized (controller package)");
+    // }
 
     @MessageMapping("/signal/join")
     public void handleSignalMessage(org.springframework.messaging.Message<?> message) {
