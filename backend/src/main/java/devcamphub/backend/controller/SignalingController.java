@@ -1,7 +1,10 @@
+package devcamphub.backend.controller;
+
 import devcamphub.backend.dto.SignalMessage;
 import devcamphub.backend.service.WebSocketSessionRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import javax.annotation.PostConstruct;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -16,7 +19,10 @@ public class SignalingController {
     private final SimpMessageSendingOperations messagingTemplate;
     private final WebSocketSessionRegistry sessionRegistry;
 
-    // ...
+    @PostConstruct
+    public void init() {
+        log.info(">>> SignalingController bean initialized (controller package)");
+    }
 
     @MessageMapping("/signal/join")
     public void handleSignalMessage(org.springframework.messaging.Message<?> message) {
@@ -25,10 +31,15 @@ public class SignalingController {
         log.info("Payload: {}", message.getPayload());
     }
 
-    @MessageMapping("/signal/**")
-    public void handleAllSignalMessages(SignalMessage message, @DestinationVariable String[] pathSegments) {
-        log.info(">>> SignalingController: handleAllSignalMessages received message on generic path: /signal/{}", String.join("/", pathSegments));
-        log.info("Generic Signal message received: type={}, sender={}, data={}",
-                message.getType(), message.getSender(), message.getData());
-    }
+    /*
+     * @MessageMapping("/signal/**")
+     * public void handleAllSignalMessages(SignalMessage
+     * message, @DestinationVariable String[] pathSegments) {
+     * log.
+     * info(">>> SignalingController: handleAllSignalMessages received message on generic path: /signal/{}"
+     * , String.join("/", pathSegments));
+     * log.info("Generic Signal message received: type={}, sender={}, data={}",
+     * message.getType(), message.getSender(), message.getData());
+     * }
+     */
 }
