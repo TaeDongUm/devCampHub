@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { http } from "../api/http";
 import ChatPage from "./ChatPage";
 
@@ -34,7 +35,8 @@ export interface StreamResponseDto {
   type: "LECTURE" | "MOGAKCO";
 }
 
-export default function LiveLecture({ campId }: { campId: string }) {
+export default function LiveLecture() {
+  const { campId } = useParams<{ campId: string }>();
   const [lectureStream, setLectureStream] = useState<StreamResponseDto | null>(null);
   const [nickname, setNickname] = useState("익명"); // nickname 상태 추가
 
@@ -49,8 +51,8 @@ export default function LiveLecture({ campId }: { campId: string }) {
 
     const fetchLectureStream = async () => {
       try {
-        const streams = await http<StreamResponseDto[]>(`/api/camps/${campId}/streams`);
-        const lecture = streams.find((s) => s.type === "LECTURE");
+        const allStreams = await http<StreamResponseDto[]>(`/api/camps/${campId}/streams`);
+        const lecture = allStreams.find((s) => s.type === "LECTURE");
         setLectureStream(lecture || null);
       } catch (error) {
         console.error("강의 정보를 불러오는 데 실패했습니다.", error);
@@ -73,7 +75,7 @@ export default function LiveLecture({ campId }: { campId: string }) {
           <div style={{ marginTop: 12 }}>
             <ChatPage
               key={`chat-lecture-${lectureStream.streamId}`}
-              channel={`lecture-${lectureStream.streamId}`}
+              channel={`lecture:${campId}:lecture-${lectureStream.streamId}`}
               nickname={nickname} // nickname prop 추가
             />
           </div>
