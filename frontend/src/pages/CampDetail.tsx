@@ -200,7 +200,12 @@ export default function CampDetail() {
                     <div className="video-grid">
                       {activeStreams.length > 0 ? (
                         activeStreams.map((stream) => (
-                          <div key={stream.streamId} className="video-cell" style={{ cursor: 'pointer' }} onClick={() => alert('곧 구현될 기능입니다: ' + stream.title)}>
+                          <div key={stream.streamId} className="video-cell" style={{ cursor: 'pointer' }} onClick={() => {
+                            const targetPath = stream.type === 'LECTURE'
+                              ? `/camps/${campId}/live/${stream.streamId}`
+                              : `/camps/${campId}/mogakco/${stream.streamId}`;
+                            nav(targetPath);
+                          }}>
                             {stream.thumbnailUrl ? (
                               <img src={`${API_BASE}${stream.thumbnailUrl}`} alt={stream.title} style={{ width: '100%', height: 140, objectFit: 'cover' }} />
                             ) : (
