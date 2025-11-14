@@ -1,16 +1,14 @@
 package devcamphub.backend.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Data;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class SignalMessage {
-    private String type;      // offer, answer, ice, join, leave 등
-    private String sender;    // 메시지를 보낸 사람
-    private Object data;      // 실제 데이터 (SDP, ICE candidate 등)
+    private String type;
+    private String sender;
+    private String receiver;
+    private Object data;
+    private String streamId; // 추가
+    private String nickname; // 추가
 }
+
