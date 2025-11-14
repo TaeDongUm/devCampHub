@@ -12,6 +12,8 @@ import DashBoardHome from "./pages/DashBoardHome";
 import Settings from "./pages/Settings";
 import Attendance from "./pages/Attendance";
 import MyPage from "./pages/MyPage";
+import Mogakco from "./pages/Mogakco";
+import LiveLecture from "./pages/LiveLecture";
 
 function RoutedHome() {
   const navigate = useNavigate();
@@ -31,6 +33,8 @@ export default function App() {
         <Route path="/admin/home" element={<AdminHome />} />
         <Route path="/student/home" element={<StudentHome />} />
         <Route path="/camp/:campId" element={<CampDetail />} />
+        <Route path="/camps/:campId/mogakco/:streamId" element={<Mogakco />} />
+        <Route path="/camps/:campId/live/:streamId" element={<LiveLecture />} />
         <Route path="/dashboard/home" element={<DashBoardHome />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/camp/:campId/attendance" element={<Attendance />} />
