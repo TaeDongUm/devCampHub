@@ -1,18 +1,30 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import ChatPage from "./ChatPage";
-import { http } from "../api/http";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import "../styles/CampDetail.css"; // CampDetail의 스타일 재사용
 import { useStreamSession } from "../hooks/useStreamSession";
-import { type StreamResponseDto } from "./LiveLecture"; // 타입 재사용
+import { http } from "../api/http";
+import { type Camp } from "./DashBoardHome";
+import BroadcastView from "../components/BroadcastView"; // 새로 만든 컴포넌트 임포트
 
-// CampDetail.tsx에서 복사해온 decodeJwt 함수
+// --- Helper functions and types (CampDetail에서 가져옴) ---
+
 interface JwtPayload {
-  sub: string; // email
+  sub: string;
   role: "ADMIN" | "STUDENT";
   nickname: string;
   iat: number;
   exp: number;
 }
+
+interface StreamResponseDto {
+  streamId: number;
+  title: string;
+  ownerNickname: string;
+  type: "LECTURE" | "MOGAKCO";
+}
+
+type Channel = "notice" | "qna" | "resources" | "lounge" | "study" | "live" | "mogakco";
+type Role = "ADMIN" | "STUDENT";
 
 function decodeJwt(token: string): JwtPayload | null {
   try {
@@ -30,169 +42,124 @@ function decodeJwt(token: string): JwtPayload | null {
   }
 }
 
-export default function Mogakco() {
-  const { campId, streamId: urlStreamId } = useParams<{ campId: string; streamId: string }>();
-  const [streams, setStreams] = useState<StreamResponseDto[]>([]);
-  const [currentStream, setCurrentStream] = useState<StreamResponseDto | null>(null);
-  const [nickname, setNickname] = useState("익명");
+function SideLink({ label, active, onClick }: { label: string; active: boolean; onClick: () => void; }) {
+  return <button className={`aside-link as-btn ${active ? "active" : ""}`} onClick={onClick}>{label}</button>;
+}
 
-  // useStreamSession 호출 (campId와 nickname이 있을 때)
-  const { remoteStreams } = useStreamSession(campId || "", nickname);
+// --- Mogakco Component ---
+
+export default function Mogakco() {
+  const { campId = "", streamId: urlStreamId = "" } = useParams<{ campId: string; streamId: string }>();
+  const nav = useNavigate();
+  const [sp, setSp] = useSearchParams();
+
+  const [nickname, setNickname] = useState("익명");
+  const [camp, setCamp] = useState<Camp | null>(null);
+  const [currentStream, setCurrentStream] = useState<StreamResponseDto | null>(null);
+
+  const { isStreaming, end, localStream, remoteStreams, toggleAudio, toggleVideo, meta } = useStreamSession(
+    campId,
+    nickname,
+    urlStreamId
+  );
+
+  const logout = useCallback(() => {
+    localStorage.clear();
+    nav("/login");
+  }, [nav]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       const payload = decodeJwt(token);
-      if (payload) {
-        setNickname(payload.nickname);
-      }
+      if (payload) setNickname(payload.nickname);
+      else logout();
+    } else {
+      logout();
     }
 
-    const fetchMogakcoStreams = async () => {
-      try {
-        const allStreams = await http<StreamResponseDto[]>(`/api/camps/${campId}/streams`);
-        const mogakcoStreams = allStreams.filter((s) => s.type === "MOGAKCO");
-        setStreams(mogakcoStreams);
+    // 캠프 정보 불러오기
+    http<Camp>(`/api/camps/${campId}`).catch(() => {
+      alert("캠프 정보를 불러오는 데 실패했습니다.");
+      nav("/student/home");
+    }).then(setCamp);
 
-        // URL에 streamId가 있으면 현재 스트림 설정
-        if (urlStreamId) {
-          const stream = mogakcoStreams.find((s) => s.streamId === parseInt(urlStreamId));
-          setCurrentStream(stream || null);
+    // 스트림 정보 불러오기
+    http<StreamResponseDto[]>(`/api/camps/${campId}/streams`)
+      .then(streams => {
+        const stream = streams.find(s => s.streamId === parseInt(urlStreamId));
+        if (stream) {
+          setCurrentStream(stream);
+        } else {
+          throw new Error("Stream not found");
         }
-      } catch (error) {
-        console.error("모각코 정보를 불러오는 데 실패했습니다.", error);
-      }
-    };
+      })
+      .catch(() => {
+        alert("스트림 정보를 불러오는 데 실패했습니다.");
+        nav(`/camp/${campId}?ch=mogakco`);
+      });
 
-    fetchMogakcoStreams();
-    const interval = setInterval(fetchMogakcoStreams, 15000); // 15초마다 새로고침
+  }, [campId, urlStreamId, nav, logout]);
 
-    return () => clearInterval(interval);
-  }, [campId, urlStreamId]);
+  const initialCh = (sp.get("ch") as Channel) || "mogakco";
+  const [ch, setCh] = useState<Channel>(initialCh);
+  useEffect(() => {
+    const next = new URLSearchParams(sp);
+    next.set("ch", ch);
+    // Mogakco 페이지에서는 URL을 바꾸지 않음 (페이지 이동 방지)
+  }, [ch, setSp]);
 
-  // 스트리밍 페이지 보기 (URL에 streamId가 있을 때)
-  if (urlStreamId && currentStream) {
-    return (
-      <div style={{ display: "flex", gap: "16px", height: "100vh" }}>
-        {/* 왼쪽: 메인 비디오 영역 */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <h2>{currentStream.title}</h2>
-          <div
-            className="video-surface on"
-            style={{
-              flex: 1,
-              backgroundColor: "#000",
-              borderRadius: "8px",
-              marginBottom: "16px",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {Object.keys(remoteStreams).length > 0 ? (
-              Object.entries(remoteStreams).map(([peerId, stream]) => (
-                <video
-                  key={peerId}
-                  autoPlay
-                  playsInline
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                  }}
-                  ref={(video) => {
-                    if (video && stream) {
-                      video.srcObject = stream;
-                    }
-                  }}
-                />
-              ))
-            ) : (
-              <div style={{ color: "#999", textAlign: "center", paddingTop: "50%" }}>
-                원격 스트림 대기 중...
-              </div>
-            )}
-          </div>
+  const goMyPage = () => nav("/mypage");
+  const goCampDetail = () => nav(`/camp/${campId}?ch=mogakco`);
 
-          {/* 참여자 목록 */}
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            {Object.keys(remoteStreams).map((peerId) => (
-              <div
-                key={peerId}
-                style={{
-                  width: "100px",
-                  height: "80px",
-                  backgroundColor: "#333",
-                  borderRadius: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#fff",
-                  fontSize: "12px",
-                }}
-              >
-                {peerId}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 오른쪽: 채팅 */}
-        <div style={{ width: "300px", borderLeft: "1px solid #ddd", paddingLeft: "16px" }}>
-          <ChatPage
-            key={`chat-mogakco-${currentStream.streamId}`}
-            channel={`mogakco:${campId}:mogakco-${currentStream.streamId}`}
-            nickname={nickname}
-          />
-        </div>
-      </div>
-    );
+  if (!currentStream || !camp) {
+    return <div>스트리밍 정보를 불러오는 중...</div>;
   }
 
-  // 스트림 리스트 보기 (URL에 streamId가 없을 때)
   return (
-    <div>
-      {streams.length === 0 ? (
-        <div className="empty">현재 실시간 방송 중인 분들이 없습니다.</div>
-      ) : (
-        <div className="mine-grid" style={{ gridTemplateColumns: "repeat(12, 1fr)" }}>
-          {streams.map((s) => (
-            <div
-              key={s.streamId}
-              className="mine-card"
-              style={{ gridColumn: "span 4", cursor: "pointer" }}
-              onClick={() => setCurrentStream(s)}
-            >
-              <div className="video-surface" style={{ height: 120, marginBottom: 8 }}>
-                🎥 {s.title}
-              </div>
-              <div className="meta">
-                <strong>{s.ownerNickname}</strong>
-              </div>
-            </div>
-          ))}
+    <div className="camp">
+      <header className="camp-top">
+        <div className="camp-title" onClick={goCampDetail}>
+          devCampHub / <span className="camp-crumb">{camp.name}</span>
         </div>
-      )}
+        <div className="camp-actions">
+          <button className="btn sm" onClick={goMyPage}>마이페이지</button>
+          <button className="btn sm ghost" onClick={logout}>로그아웃</button>
+        </div>
+      </header>
 
-      {currentStream && !urlStreamId && (
-        <div className="modal-bg" onClick={() => setCurrentStream(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{currentStream.title}</h3>
-            <div className="video-surface on" style={{ height: 320 }}>
-              🙋 {currentStream.ownerNickname} 님 방송 (가상 플레이어)
-            </div>
-            <ChatPage
-              key={`chat-mogakco-${currentStream.streamId}`}
-              channel={`mogakco:${campId}:mogakco-${currentStream.streamId}`}
-              nickname={nickname}
-            />
-            <div className="modal-actions">
-              <button className="btn ghost" onClick={() => setCurrentStream(null)}>
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="camp-body">
+        <aside className="camp-aside">
+          <nav className="aside-nav">
+            <div className="aside-section">채널</div>
+            <SideLink label="📢 공지사항" active={ch === "notice"} onClick={() => nav(`/camp/${campId}?ch=notice`)} />
+            <SideLink label="❓ Q&A" active={ch === "qna"} onClick={() => nav(`/camp/${campId}?ch=qna`)} />
+            <SideLink label="📂 공유할 학습자료" active={ch === "resources"} onClick={() => nav(`/camp/${campId}?ch=resources`)} />
+            <SideLink label="💬 라운지(잡담/자유)" active={ch === "lounge"} onClick={() => nav(`/camp/${campId}?ch=lounge`)} />
+            <SideLink label="🧠 공부 질문" active={ch === "study"} onClick={() => nav(`/camp/${campId}?ch=study`)} />
+            <div className="aside-section">실시간</div>
+            <SideLink label="🎥 실시간 강의(관리자)" active={ch === "live"} onClick={() => nav(`/camp/${campId}?ch=live`)} />
+            <SideLink label="👥 모각코" active={ch === "mogakco"} onClick={() => nav(`/camp/${campId}?ch=mogakco`)} />
+          </nav>
+        </aside>
+
+        <main className="camp-main">
+          <BroadcastView
+            campId={campId}
+            streamId={parseInt(urlStreamId)}
+            currentStream={currentStream}
+            nickname={nickname}
+            isStreaming={isStreaming}
+            localStream={localStream}
+            remoteStreams={remoteStreams}
+            toggleAudio={toggleAudio}
+            toggleVideo={toggleVideo}
+            endStream={end}
+            meta={meta}
+          />
+        </main>
+      </div>
     </div>
   );
 }
+
