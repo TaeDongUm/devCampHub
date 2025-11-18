@@ -17,12 +17,26 @@ export const useChat = (fullChannelId: string, nickname: string) => {
   const clientRef = useRef<Client | null>(null);
 
   // fullChannelId에서 campId와 channelName을 추출합니다.
+  // 두 가지 포맷을 모두 처리:
+  // 1. "chat:channelName:campId" (일반 채널)
+  // 2. "type:campId:channelName" (스트리밍 채널)
   const parts = fullChannelId.split(':');
-  const channelName = parts[1]; // 예: "notice"
-  const campId = parts[2];     // 예: "123"
+  let campId: string;
+  let channelName: string;
+
+  if (parts[0] === 'chat') {
+    channelName = parts[1];
+    campId = parts[2];
+  } else {
+    campId = parts[1];
+    channelName = parts[2];
+  }
 
   useEffect(() => {
     if (!fullChannelId || !nickname) return;
+
+    console.log(`[useChat] Initializing for channel: ${fullChannelId}`);
+    console.log(`[useChat] Parsed campId: ${campId}, channelName: ${channelName}`);
 
     const fetchChatHistory = async () => {
       try {
@@ -43,16 +57,20 @@ export const useChat = (fullChannelId: string, nickname: string) => {
 
     fetchChatHistory();
 
+    const token = localStorage.getItem('token');
+    const sockJsUrl = token 
+      ? `http://localhost:8080/ws-stomp?token=${encodeURIComponent(token)}`
+      : 'http://localhost:8080/ws-stomp';
+
     const client = new Client({
-      // 1. 웹소켓 접속 주소를 백엔드에 맞게 수정합니다. SockJS를 사용합니다.
-      webSocketFactory: () => new SockJS('http://localhost:8080/ws-stomp'),
+      webSocketFactory: () => new SockJS(sockJsUrl),
       connectHeaders: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        Authorization: `Bearer ${token}`,
       },
       onConnect: () => {
-        console.log('Connected to WebSocket');
-        // 2. 구독 경로를 백엔드에 맞게 수정합니다.
+        console.log(`[useChat] WebSocket connected. Subscribing to /topic/chat/${campId}/${channelName}`);
         client.subscribe(`/topic/chat/${campId}/${channelName}`, (message) => {
+          console.log('[useChat] Message received from topic:', message.body);
           try {
             const receivedMessage = JSON.parse(message.body) as ChatMessage;
             setMessages(prevMessages => [...prevMessages, receivedMessage]);
@@ -68,7 +86,7 @@ export const useChat = (fullChannelId: string, nickname: string) => {
       onWebSocketError: (event) => {
         console.error('WebSocket error:', event);
       },
-      reconnectDelay: 5000, // 5초마다 재연결 시도
+      reconnectDelay: 5000,
     });
 
     client.activate();
@@ -76,24 +94,26 @@ export const useChat = (fullChannelId: string, nickname: string) => {
 
     return () => {
       client.deactivate();
-      console.log('Disconnected from WebSocket');
+      console.log('[useChat] Disconnected from WebSocket');
     };
-  }, [fullChannelId, nickname, campId, channelName]); // fullChannelId나 nickname이 바뀌면 재연결합니다.
+  }, [fullChannelId, nickname, campId, channelName]);
 
   const sendMessage = (messagePayload: { text: string; code?: string; files?: any[] }) => {
+    console.log('[useChat] sendMessage called with:', messagePayload);
     if (clientRef.current && clientRef.current.connected) {
-      // 3. API로 보낼 데이터 형식을 백엔드 ChatMessageDto에 맞춥니다.
+      console.log('[useChat] Client is connected. Publishing message.');
       const chatMessageForApi = {
         sender: nickname,
-        content: JSON.stringify(messagePayload), // 복합적인 내용은 content에 JSON 문자열로 담습니다.
+        content: JSON.stringify(messagePayload),
         type: 'CHAT',
       };
 
-      // 4. 발행 경로를 백엔드에 맞게 수정합니다.
       clientRef.current.publish({
         destination: `/app/chat/${campId}/${channelName}`,
         body: JSON.stringify(chatMessageForApi),
       });
+    } else {
+      console.error('[useChat] sendMessage failed: Client not connected.');
     }
   };
 

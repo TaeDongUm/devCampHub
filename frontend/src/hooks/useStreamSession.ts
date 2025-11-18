@@ -143,8 +143,13 @@ export function useStreamSession(campId: string, nickname: string, joinStreamId?
         return;
     }
 
+    const token = localStorage.getItem('token');
+    const sockJsUrl = token 
+      ? `http://localhost:8080/ws-stomp?token=${encodeURIComponent(token)}`
+      : 'http://localhost:8080/ws-stomp';
+
     const client = new Client({
-        webSocketFactory: () => new SockJS('http://localhost:8080/ws-stomp'),
+        webSocketFactory: () => new SockJS(sockJsUrl),
         reconnectDelay: 5000,
         onConnect: () => {
             client.subscribe(`/topic/signal/${streamId}`, async message => {
