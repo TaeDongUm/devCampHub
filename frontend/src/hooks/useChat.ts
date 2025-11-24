@@ -40,7 +40,7 @@ export const useChat = (fullChannelId: string, nickname: string) => {
 
     const fetchChatHistory = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/camps/${campId}/chat/${channelName}/history`, {
+        const response = await fetch(`http://127.0.0.1:8080/api/camps/${campId}/chat/${channelName}/history`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -59,8 +59,8 @@ export const useChat = (fullChannelId: string, nickname: string) => {
 
     const token = localStorage.getItem('token');
     const sockJsUrl = token 
-      ? `http://localhost:8080/ws-stomp?token=${encodeURIComponent(token)}`
-      : 'http://localhost:8080/ws-stomp';
+      ? `http://127.0.0.1:8080/ws-stomp?token=${encodeURIComponent(token)}`
+      : 'http://127.0.0.1:8080/ws-stomp';
 
     const client = new Client({
       webSocketFactory: () => new SockJS(sockJsUrl),
