@@ -74,12 +74,24 @@ interface ChatPageProps {
 // --- 메인 컴포넌트 ---
 export default function ChatPage({ channel, nickname, placeholder }: ChatPageProps) {
   // useChat 훅을 새로운 시그니처에 맞게 호출합니다.
-  const { messages, sendMessage } = useChat(channel, nickname);
+  const {
+    messages,
+    sendMessage,
+    sendingStatus,
+    connectionState,
+    manualReconnect,
+    retryLastMessage,
+  } = useChat(channel, nickname);
 
   const [text, setText] = useState<string>("");
   const [showEmoji, setShowEmoji] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [lastMessage, setLastMessage] = useState<{
+    text: string;
+    code?: string;
+    files?: any[];
+  } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -133,7 +145,12 @@ export default function ChatPage({ channel, nickname, placeholder }: ChatPagePro
     if (!base && !hasFiles) return;
 
     const { code, plain } = extractFencedCodeLoose(base);
-    sendMessage({ text: plain, code, files });
+    const messagePayload = { text: plain, code, files };
+
+    // 마지막 메시지 저장 (재시도용)
+    setLastMessage(messagePayload);
+
+    sendMessage(messagePayload);
 
     setText("");
     setFiles([]);
@@ -163,7 +180,46 @@ export default function ChatPage({ channel, nickname, placeholder }: ChatPagePro
 
   return (
     <div className="chat-page">
-       <div className="chat-list" ref={listRef}>
+      {/* 연결 상태 표시 */}
+      <div className="connection-status-bar">
+        {connectionState === "connecting" && (
+          <span className="status-connecting">🔵 연결 중...</span>
+        )}
+        {connectionState === "connected" && <span className="status-connected">🟢 연결됨</span>}
+        {connectionState === "disconnected" && (
+          <div className="status-disconnected">
+            <span>🔴 연결 끊김</span>
+            <button className="reconnect-btn" onClick={manualReconnect}>
+              🔄 재연결 시도
+            </button>
+          </div>
+        )}
+        {connectionState === "reconnecting" && (
+          <span className="status-reconnecting">🟡 재연결 중...</span>
+        )}
+      </div>
+
+      {/* 전송 상태 표시 */}
+      {sendingStatus.status === "sending" && (
+        <div className="sending-indicator">
+          <span>📤 전송 중...</span>
+        </div>
+      )}
+      {sendingStatus.status === "retrying" && (
+        <div className="sending-indicator retrying">
+          <span>🔄 재시도 중... ({sendingStatus.retryCount}/3)</span>
+        </div>
+      )}
+      {sendingStatus.status === "failed" && lastMessage && (
+        <div className="sending-indicator failed">
+          <span>❌ 전송 실패</span>
+          <button className="retry-btn" onClick={() => retryLastMessage(lastMessage)}>
+            다시 시도
+          </button>
+        </div>
+      )}
+
+      <div className="chat-list" ref={listRef}>
         {grouped.length === 0 && <div className="chat-empty">첫 메시지를 남겨보세요.</div>}
         {grouped.map(([k, arr]) => (
           <div key={k}>
@@ -173,35 +229,37 @@ export default function ChatPage({ channel, nickname, placeholder }: ChatPagePro
               </span>
             </div>
             {arr.map((m, idx) => (
-              <div key={idx} className={`chat-msg ${m.sender === nickname ? 'mine' : ''}`}>
+              <div key={idx} className={`chat-msg ${m.sender === nickname ? "mine" : ""}`}>
                 <div className="chat-who">{m.sender}</div>
                 <div className="chat-bubble-container">
-                  <div className="chat-content-wrapper"> {/* New wrapper div */}
+                  <div className="chat-content-wrapper">
+                    {" "}
+                    {/* New wrapper div */}
                     <div className="chat-body">
-                    {m.parsedContent.text && (
-                      <div className="chat-text">{renderText(m.parsedContent.text)}</div>
-                    )}
-                    {m.parsedContent.code && (
-                      <pre className="chat-code">
-                        <code>{m.parsedContent.code}</code>
-                      </pre>
-                    )}
-                    {Array.isArray(m.parsedContent.files) && m.parsedContent.files.length > 0 && (
-                      <div className="attach-preview" style={{ marginTop: 8 }}>
-                        {m.parsedContent.files.map((f: FileItem, fIdx: number) =>
-                          f.type.startsWith("image/") ? (
-                            <div className="file-thumb" key={fIdx}>
-                              <img src={f.url} alt={f.name} />
-                              <div className="file-cap">{f.name}</div>
-                            </div>
-                          ) : (
-                            <a className="file-link" key={fIdx} href={f.url} download={f.name}>
-                              {f.name}
-                            </a>
-                          )
-                        )}
-                      </div>
-                    )}
+                      {m.parsedContent.text && (
+                        <div className="chat-text">{renderText(m.parsedContent.text)}</div>
+                      )}
+                      {m.parsedContent.code && (
+                        <pre className="chat-code">
+                          <code>{m.parsedContent.code}</code>
+                        </pre>
+                      )}
+                      {Array.isArray(m.parsedContent.files) && m.parsedContent.files.length > 0 && (
+                        <div className="attach-preview" style={{ marginTop: 8 }}>
+                          {m.parsedContent.files.map((f: FileItem, fIdx: number) =>
+                            f.type.startsWith("image/") ? (
+                              <div className="file-thumb" key={fIdx}>
+                                <img src={f.url} alt={f.name} />
+                                <div className="file-cap">{f.name}</div>
+                              </div>
+                            ) : (
+                              <a className="file-link" key={fIdx} href={f.url} download={f.name}>
+                                {f.name}
+                              </a>
+                            )
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="chat-timestamp">{m.timestamp}</div>
@@ -213,12 +271,37 @@ export default function ChatPage({ channel, nickname, placeholder }: ChatPagePro
       </div>
       <form className="chat-form" onSubmit={onSubmit}>
         <div className="chat-toolbar">
-          <button type="button" className="tb-btn" title="파일 추가" onClick={() => fileInputRef.current?.click()}>⊕</button>
-          <input ref={fileInputRef} type="file" multiple style={{ display: "none" }} onChange={onPickFiles} accept="image/*,application/pdf,text/plain,application/zip,application/json" />
-          <button type="button" className="tb-btn" title="이모지" onClick={() => setShowEmoji((v) => !v)}>🙂</button>
+          <button
+            type="button"
+            className="tb-btn"
+            title="파일 추가"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            ⊕
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            style={{ display: "none" }}
+            onChange={onPickFiles}
+            accept="image/*,application/pdf,text/plain,application/zip,application/json"
+          />
+          <button
+            type="button"
+            className="tb-btn"
+            title="이모지"
+            onClick={() => setShowEmoji((v) => !v)}
+          >
+            🙂
+          </button>
           {showEmoji && (
             <div className="emoji-pop">
-              {EMOJIS.map((e) => <button key={e} type="button" className="emoji" onClick={() => insertAtCursor(e)}>{e}</button>)}
+              {EMOJIS.map((e) => (
+                <button key={e} type="button" className="emoji" onClick={() => insertAtCursor(e)}>
+                  {e}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -232,15 +315,32 @@ export default function ChatPage({ channel, nickname, placeholder }: ChatPagePro
                     <div className="file-cap">{f.name}</div>
                   </div>
                 ) : (
-                  <span className="file-link" key={idx}>{f.name}</span>
+                  <span className="file-link" key={idx}>
+                    {f.name}
+                  </span>
                 )
               )}
             </div>
           </div>
         )}
         <div className="chat-input-box">
-          <textarea ref={textareaRef} className="ipt chat-input ta" placeholder={placeholder || "메시지 보내기"} value={text} onChange={onPlainChange} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); } }} rows={2} />
-          <button type="submit" className="btn send-btn">보내기</button>
+          <textarea
+            ref={textareaRef}
+            className="ipt chat-input ta"
+            placeholder={placeholder || "메시지 보내기"}
+            value={text}
+            onChange={onPlainChange}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                doSend();
+              }
+            }}
+            rows={2}
+          />
+          <button type="submit" className="btn send-btn">
+            보내기
+          </button>
         </div>
       </form>
     </div>

@@ -167,6 +167,78 @@
   border: 1px solid #1f2732;
   border-radius: 12px;
 }
+
+/* 연결 상태 표시 바 */
+.connection-status-bar {
+  padding: 8px 12px;
+  background: #0b1117;
+  border-bottom: 1px solid #1f2732;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9em;
+}
+
+.status-connecting {
+  color: #5b9cff;
+}
+
+.status-connected {
+  color: #3fb950;
+}
+
+.status-disconnected {
+  color: #f85149;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-reconnecting {
+  color: #d29922;
+}
+
+.reconnect-btn,
+.retry-btn {
+  background: #238636;
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.reconnect-btn:hover,
+.retry-btn:hover {
+  background: #2ea043;
+}
+
+/* 전송 상태 표시 */
+.sending-indicator {
+  padding: 8px 12px;
+  background: #1c2a35;
+  border-bottom: 1px solid #1f2732;
+  text-align: center;
+  font-size: 0.9em;
+  color: #8fb3ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.sending-indicator.retrying {
+  background: #2b2200;
+  color: #d29922;
+}
+
+.sending-indicator.failed {
+  background: #2b1a1a;
+  color: #f85149;
+}
+
 .chat-list {
   max-height: 46vh;
   overflow: auto;
