@@ -1,5 +1,5 @@
 // src/api/http.ts
-export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8080";
+export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8080";
 
 export async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const token = localStorage.getItem("token");

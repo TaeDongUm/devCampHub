@@ -5,7 +5,7 @@ import SockJS from 'sockjs-client';
 
 export interface StreamMeta {
   title: string;
-  type: 'LIVE' | 'MOGAKCO';
+  type: 'LECTURE' | 'MOGAKCO';
   micOn: boolean;
   camOn: boolean;
   screenOn: boolean;
@@ -16,12 +16,14 @@ interface StreamResponseDto {
     streamId: number;
     title: string;
     ownerNickname: string;
-    type: 'LIVE' | 'MOGAKCO';
+    type: 'LECTURE' | 'MOGAKCO';
 }
 
-export function useStreamSession(campId: string, nickname: string) {
+export function useStreamSession(campId: string, nickname: string, joinStreamId?: string) {
   const [isStreaming, setStreaming] = useState<boolean>(false);
-  const [streamId, setStreamId] = useState<number | null>(null);
+  const [streamId, setStreamId] = useState<number | null>(
+    joinStreamId ? parseInt(joinStreamId, 10) : null
+  );
   const [meta, setMeta] = useState<Partial<StreamMeta>>({});
   
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -34,13 +36,29 @@ export function useStreamSession(campId: string, nickname: string) {
   const createPeerConnection = useCallback((peerNickname: string, currentStreamId: number) => {
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
 
+    pc.oniceconnectionstatechange = () => {
+      console.log(`[${peerNickname}] ICE connection state: ${pc.iceConnectionState}`);
+    };
+    pc.onconnectionstatechange = () => {
+      console.log(`[${peerNickname}] Peer connection state: ${pc.connectionState}`);
+    };
+
     pc.onicecandidate = (event) => {
       if (event.candidate && stompClient.current?.connected) {
-        stompClient.current.publish({ destination: `/app/signal/${currentStreamId}`, body: JSON.stringify({ type: 'ice', sender: nickname, data: event.candidate }) });
+        stompClient.current.publish({ 
+          destination: `/app/signal/${currentStreamId}`, 
+          body: JSON.stringify({ 
+            type: 'ice', 
+            sender: nickname, 
+            receiver: peerNickname, 
+            data: event.candidate 
+          }) 
+        });
       }
     };
 
     pc.ontrack = (event) => {
+      console.log(`[${peerNickname}] Track received`, event.streams[0]);
       setRemoteStreams(prev => ({ ...prev, [peerNickname]: event.streams[0] }));
     };
 
@@ -52,120 +70,171 @@ export function useStreamSession(campId: string, nickname: string) {
     return pc;
   }, [nickname]);
 
-  // 스트리밍 시작 (상태 설정만 담당)
-  const begin = useCallback(async (initialMeta: StreamMeta) => {
+  const begin = useCallback(async (initialMeta: StreamMeta): Promise<number | undefined> => {
     try {
-      const stream = await http<StreamResponseDto>(`/api/camps/${campId}/streams`, {
+      const streamRes = await http<StreamResponseDto>(`/api/camps/${campId}/streams`, {
         method: 'POST',
         body: JSON.stringify({ title: initialMeta.title, type: initialMeta.type, track: initialMeta.track })
       });
-      const localStream = await navigator.mediaDevices.getUserMedia({ video: initialMeta.camOn, audio: initialMeta.micOn });
-      localStreamRef.current = localStream;
-      setLocalStream(localStream);
+
+      let stream: MediaStream;
+      if (initialMeta.screenOn) {
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: initialMeta.micOn });
+      } else {
+        stream = await navigator.mediaDevices.getUserMedia({ video: initialMeta.camOn, audio: initialMeta.micOn });
+      }
+      
+      localStreamRef.current = stream;
+      setLocalStream(stream);
       
       setMeta(initialMeta);
-      setStreamId(stream.streamId);
+      setStreamId(streamRes.streamId);
       setStreaming(true);
+      return streamRes.streamId;
     } catch (err) {
       console.error("스트리밍 시작 실패:", err);
-      alert("카메라 또는 마이크를 사용할 수 없습니다. 장치가 연결되어 있는지, 브라우저에서 접근 권한이 허용되었는지 확인해주세요.");
+      alert("미디어 장치를 사용할 수 없습니다. 장치가 연결되어 있는지, 브라우저에서 접근 권한이 허용되었는지 확인해주세요.");
     }
   }, [campId]);
 
-  // 스트리밍 종료 (상태 초기화만 담당)
   const end = useCallback(async () => {
     if (!streamId) return;
-    await http(`/api/camps/${campId}/streams/${streamId}`, { method: 'DELETE' });
+    // 스트림 종료 API 호출 추가
+    try {
+      await http(`/api/camps/${campId}/streams/${streamId}`, { method: 'DELETE' });
+    } catch (error) {
+      console.error("스트림 종료 API 호출 실패:", error);
+    }
+    
     localStreamRef.current?.getTracks().forEach(track => track.stop());
     localStreamRef.current = null;
     setLocalStream(null);
     setStreaming(false);
     setStreamId(null);
+    // 모든 peer-connection 종료
+    Object.values(peerConnections.current).forEach(pc => pc.close());
+    peerConnections.current = {};
+    // stomp client 비활성화
+    if (stompClient.current?.active) {
+      stompClient.current.deactivate();
+    }
   }, [campId, streamId]);
 
-  // streamId가 생기거나 사라질 때 WebSocket 연결/해제 처리
+  const toggleAudio = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      setMeta(prev => ({ ...prev, micOn: !prev.micOn }));
+    }
+  }, []);
+
+  const toggleVideo = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      setMeta(prev => ({ ...prev, camOn: !prev.camOn }));
+    }
+  }, []);
+
   useEffect(() => {
-    if (!isStreaming || !streamId) {
+    if (!nickname || !streamId) {
         return;
     }
 
+    const token = localStorage.getItem('token');
+    const sockJsUrl = token 
+      ? `http://127.0.0.1:8080/ws-stomp?token=${encodeURIComponent(token)}`
+      : 'http://127.0.0.1:8080/ws-stomp';
+
     const client = new Client({
-        webSocketFactory: () => new SockJS('http://localhost:8080/ws-stomp'),
+        webSocketFactory: () => new SockJS(sockJsUrl),
+        reconnectDelay: 5000,
         onConnect: () => {
             client.subscribe(`/topic/signal/${streamId}`, async message => {
                 const signal = JSON.parse(message.body);
                 const sender = signal.sender;
                 if (sender === nickname) return;
+                if (signal.receiver && signal.receiver !== nickname) return;
+
+                let pc = peerConnections.current[sender];
+                if (!pc) {
+                  pc = createPeerConnection(sender, streamId);
+                }
 
                 switch (signal.type) {
-                case 'user-joined': {
-                    const pc = createPeerConnection(sender, streamId);
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    client.publish({ destination: `/app/signal/${streamId}`, body: JSON.stringify({ type: 'offer', sender: nickname, data: offer }) });
-                    break;
-                }
-                case 'offer': {
-                    const pc = createPeerConnection(sender, streamId);
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
-                    const answer = await pc.createAnswer();
-                    await pc.setLocalDescription(answer);
-                    client.publish({ destination: `/app/signal/${streamId}`, body: JSON.stringify({ type: 'answer', sender: nickname, data: answer }) });
-                    break;
-                }
-                case 'answer': {
-                    const pc = peerConnections.current[sender];
-                    if (pc) await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
-                    break;
-                }
-                case 'ice': {
-                    const pc = peerConnections.current[sender];
-                    if (pc) await pc.addIceCandidate(new RTCIceCandidate(signal.data));
-                    break;
-                }
-                case 'user-left': {
-                    if (peerConnections.current[sender]) {
-                        peerConnections.current[sender].close();
-                        delete peerConnections.current[sender];
+                  case 'user-joined': {
+                    if (nickname > sender) { // 중복 offer 방지
+                      const offer = await pc.createOffer();
+                      await pc.setLocalDescription(offer);
+                      client.publish({ destination: `/app/signal/${streamId}`, body: JSON.stringify({ type: 'offer', sender: nickname, receiver: sender, data: offer }) });
                     }
-                    setRemoteStreams(prev => {
-                        const newState = { ...prev };
-                        delete newState[sender];
-                        return newState;
-                    });
                     break;
-                }
-            }
+                  }
+                  case 'offer': {
+                      await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+                      const answer = await pc.createAnswer();
+                      await pc.setLocalDescription(answer);
+                      client.publish({ destination: `/app/signal/${streamId}`, body: JSON.stringify({ type: 'answer', sender: nickname, receiver: sender, data: answer }) });
+                      break;
+                  }
+                  case 'answer': {
+                      await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+                      break;
+                  }
+                  case 'ice': {
+                      await pc.addIceCandidate(new RTCIceCandidate(signal.data));
+                      break;
+                  }
+                  case 'user-left': {
+                      if (peerConnections.current[sender]) {
+                          peerConnections.current[sender].close();
+                          delete peerConnections.current[sender];
+                      }
+                      setRemoteStreams(prev => {
+                          const newState = { ...prev };
+                          delete newState[sender];
+                          return newState;
+                      });
+                      break;
+                  }
+              }
             });
 
-            console.log(`>>> useStreamSession: Publishing 'test' message to /app/test/join`);
-            client.publish({ destination: `/app/test/join`, body: "Hello from client!" });
+            // 본인을 제외한 기존 참여자 목록을 요청하고, 연결을 시작
+            client.publish({
+                destination: `/app/signal/join`,
+                body: JSON.stringify({
+                    streamId: streamId.toString(),
+                    nickname: nickname
+                })
+            });
         }
     });
 
     client.activate();
     stompClient.current = client;
 
-    // Cleanup 함수
     return () => {
-        localStreamRef.current?.getTracks().forEach(track => track.stop());
-        localStreamRef.current = null;
-        setLocalStream(null);
+        if (client.active) {
+          client.deactivate();
+        }
         Object.values(peerConnections.current).forEach(pc => pc.close());
         peerConnections.current = {};
-        client.deactivate();
         setRemoteStreams({});
     };
-  }, [isStreaming, streamId, nickname, createPeerConnection]);
+  }, [streamId, nickname, createPeerConnection]);
 
   return {
     isStreaming,
     streamId,
     meta,
-    setMeta,
     begin,
     end,
     localStream,
     remoteStreams,
+    toggleAudio,
+    toggleVideo,
   };
 }

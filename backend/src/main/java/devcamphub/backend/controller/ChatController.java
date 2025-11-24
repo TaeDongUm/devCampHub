@@ -8,15 +8,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Controller;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -24,9 +23,11 @@ import java.util.List;
 public class ChatController {
 
     private final ChatService chatService;
+    private final SimpMessagingTemplate messagingTemplate; // ACK 전송용
 
     /**
      * 클라이언트에서 "/app/chat/{campId}/{channel}"로 메시지를 보내면 이 메소드가 처리합니다.
+     * 
      * @param messageDto 클라이언트가 보낸 채팅 메시지
      * @param campId     메시지가 속한 캠프 ID
      * @param channel    메시지가 속한 채널
@@ -46,31 +47,26 @@ public class ChatController {
             return;
         }
 
-        UserDetails userDetails = null;
-        try {
-            UsernamePasswordAuthenticationToken authToken = (UsernamePasswordAuthenticationToken) principal;
-            userDetails = (UserDetails) authToken.getPrincipal();
-            log.info("Authenticated user: {}", userDetails.getUsername());
-        } catch (ClassCastException e) {
-            log.error("Principal is not of expected type UsernamePasswordAuthenticationToken. Error: {}", e.getMessage(), e);
-            return;
-        } catch (Exception e) {
-            log.error("Error extracting UserDetails from Principal. Error: {}", e.getMessage(), e);
-            return;
-        }
+        String username = principal.getName();
+        log.info("Authenticated user: {}", username);
 
-        if (userDetails == null) {
-            log.error("UserDetails could not be extracted from Principal.");
-            return;
-        }
-
-        // DTO에 채널 정보 설정
         messageDto.setChannel(channel);
         log.debug("ChatMessageDto after setting channel: {}", messageDto);
+        log.info("[시도] Received clientMsgId: {}", messageDto.getClientMsgId()); // 디버깅
 
-        // 서비스를 호출하여 메시지 처리
-        chatService.saveAndBroadcastMessage(messageDto, campId, userDetails.getUsername());
-        log.info("Message processed by ChatService.");
+        chatService.saveAndBroadcastMessage(messageDto, campId, username);
+        log.info("Message processed by ChatService for user {}.", username);
+
+        // ACK 전송
+        if (messageDto.getClientMsgId() != null) {
+            messagingTemplate.convertAndSendToUser(
+                    username,
+                    "/queue/ack",
+                    Map.of("clientMsgId", messageDto.getClientMsgId(), "status", "DELIVERED"));
+            log.info("[시도] ✅ ACK sent to user {} for msgId: {}", username, messageDto.getClientMsgId());
+        } else {
+            log.warn("[시도] ❌ clientMsgId is NULL - ACK not sent!");
+        }
     }
 
     @GetMapping("/api/camps/{campId}/chat/{channel}/history")

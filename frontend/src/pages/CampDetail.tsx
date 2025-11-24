@@ -6,6 +6,8 @@ import HeroCard from "../components/HeroCard";
 import { useStreamSession, type StreamMeta } from "../hooks/useStreamSession";
 import { http, API_BASE } from "../api/http";
 import { type Camp } from "./DashBoardHome";
+import BroadcastView from "../components/BroadcastView";
+import CheckinForm from "../components/CheckinForm";
 
 /* ===== Types ===== */
 interface JwtPayload {
@@ -44,6 +46,10 @@ function decodeJwt(token: string): JwtPayload | null {
   } catch {
     return null;
   }
+}
+
+function SideLink({ label, active, onClick }: { label: string; active: boolean; onClick: () => void; }) {
+  return <button className={`aside-link as-btn ${active ? "active" : ""}`} onClick={onClick}>{label}</button>;
 }
 
 /* ===== Component ===== */
@@ -91,7 +97,7 @@ export default function CampDetail() {
     fetchCampData();
   }, [campId, nav, fetchCampData, logout]);
 
-  const { isStreaming, begin, end, localStream, streamId } = useStreamSession(campId, nickname);
+  const { isStreaming, begin, end, localStream, remoteStreams, streamId, toggleAudio, toggleVideo, meta } = useStreamSession(campId, nickname);
 
   const initialCh = (sp.get("ch") as Channel) || "notice";
   const [ch, setCh] = useState<Channel>(initialCh);
@@ -133,37 +139,28 @@ export default function CampDetail() {
 
   const goMyPage = () => nav("/mypage");
 
-  const [streamType, setStreamType] = useState<"LIVE" | "MOGAKCO">("MOGAKCO");
-  const [meta, setMeta] = useState<Omit<StreamMeta, "type">>({ title: "", micOn: false, camOn: true, screenOn: true, track: myTrack });
+  const [streamType, setStreamType] = useState<"LECTURE" | "MOGAKCO">("MOGAKCO");
   const [showCheckin, setShowCheckin] = useState(false);
 
-  const beginStreaming = (form: Omit<StreamMeta, "type">, type: "LIVE" | "MOGAKCO") => {
-    begin({ ...form, type });
-    setMeta(form);
-    setStreamType(type);
+  const beginStreaming = (form: Omit<StreamMeta, "type" | "track"> & { track: Track }) => {
+    begin({ ...form, type: streamType });
     setShowCheckin(false);
   };
 
-  const endStreaming = () => end();
-  const toggle = (k: ToggleKey) => setMeta((prev) => ({ ...prev, [k]: !prev[k] }));
-
-  const isMyStreamVisible = isStreaming;
   const showTeach = role === "ADMIN" && ch === "live" && !isStreaming;
   const showCheckinBtn = role === "STUDENT" && ch === "mogakco" && !isStreaming;
-  const showCheckout = isMyStreamVisible;
-  const broadcastChannel = `chat:${ch}:${campId}`;
 
   return (
     <div className="camp">
       <header className="camp-top">
-        <div className="camp-title" onClick={() => nav("/dash")}>
-          devCampHub / <span className="camp-crumb">{camp ? camp.name : "Loading..."}</span>
+        <div className="camp-title" onClick={() => nav("/student/home")}>
+          devCampHub / <span className="camp-crumb">{camp ? camp.name : "..."}</span>
         </div>
         <div className="camp-actions">
-          {showTeach && <button className="btn sm" onClick={() => { setStreamType("LIVE"); setShowCheckin(true); }}>강의하기</button>}
+          {showTeach && <button className="btn sm" onClick={() => { setStreamType("LECTURE"); setShowCheckin(true); }}>강의하기</button>}
           {showCheckinBtn && <button className="btn sm" onClick={() => { setStreamType("MOGAKCO"); setShowCheckin(true); }}>체크인</button>}
-          {showCheckout && <button className="btn sm danger" onClick={endStreaming}>체크아웃</button>}
-          <button className="btn sm" onClick={goMyPage}>마이페이지</button>
+          {isStreaming && <button className="btn sm danger" onClick={end}>체크아웃</button>}
+          <button className="btn sm" onClick={() => nav("/mypage")}>마이페이지</button>
           <button className="btn sm ghost" onClick={logout}>로그아웃</button>
         </div>
       </header>
@@ -190,32 +187,39 @@ export default function CampDetail() {
             {["notice", "qna", "resources", "lounge", "study"].includes(ch) && <ChatPage channel={`chat:${ch}:${campId}`} placeholder="메시지 보내기" nickname={nickname} />}
             {(ch === "live" || ch === "mogakco") && (
               <div className="board" style={{ padding: 16 }}>
-                {isMyStreamVisible ? (
-                  <MyBroadcastView campId={campId} streamId={streamId} meta={meta} nickname={nickname} avatar={myAvatar} viewers={0} participants={[]} onToggle={toggle} onCheckout={endStreaming} localStream={localStream} broadcastChannel={broadcastChannel} />
+                {isStreaming && streamId ? (
+                  <BroadcastView
+                    campId={campId}
+                    streamId={streamId}
+                    currentStream={{ title: meta.title || "제목 없는 방송", ownerNickname: nickname }}
+                    nickname={nickname}
+                    isStreaming={isStreaming}
+                    localStream={localStream}
+                    remoteStreams={remoteStreams}
+                    toggleAudio={toggleAudio}
+                    toggleVideo={toggleVideo}
+                    endStream={end}
+                    meta={meta}
+                  />
                 ) : (
-                  <>
-                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                      {(["WEB", "ANDROID", "IOS"] as Track[]).map((t) => <button key={t} className={`chip ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>{t}</button>)}
-                    </div>
-                    <div className="video-grid">
-                      {activeStreams.length > 0 ? (
-                        activeStreams.map((stream) => (
-                          <div key={stream.streamId} className="video-cell" style={{ cursor: 'pointer' }} onClick={() => alert('곧 구현될 기능입니다: ' + stream.title)}>
-                            {stream.thumbnailUrl ? (
-                              <img src={`${API_BASE}${stream.thumbnailUrl}`} alt={stream.title} style={{ width: '100%', height: 140, objectFit: 'cover' }} />
-                            ) : (
-                              <div className="video-surface on" style={{ height: 140, width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: 12 }}>
-                                <div style={{ fontWeight: 'bold', fontSize: 16 }}>{stream.title || '제목 없는 방송'}</div>
-                              </div>
-                            )}
-                            <div className="nickname">{stream.ownerNickname}</div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="empty" style={{ padding: 20, gridColumn: '1 / -1' }}>현재 진행중인 방송이 없습니다.</div>
-                      )}
-                    </div>
-                  </>
+                  <div className="video-grid">
+                    {activeStreams.length > 0 ? (
+                      activeStreams.map((stream) => (
+                        <div key={stream.streamId} className="video-cell" style={{ cursor: 'pointer' }} onClick={() => nav(`/camps/${campId}/${stream.type.toLowerCase()}/${stream.streamId}`)}>
+                          {stream.thumbnailUrl ? (
+                            <img src={`${API_BASE}${stream.thumbnailUrl}`} alt={stream.title} style={{ width: '100%', height: 140, objectFit: 'cover' }} />
+                          ) : (
+                            <div className="video-surface on" style={{ height: 140, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <div style={{ fontWeight: 'bold', fontSize: 16 }}>{stream.title || '제목 없는 방송'}</div>
+                            </div>
+                          )}
+                          <div className="nickname">{stream.ownerNickname}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="empty" style={{ padding: 20, gridColumn: '1 / -1' }}>현재 진행중인 방송이 없습니다.</div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -235,112 +239,3 @@ export default function CampDetail() {
   );
 }
 
-/* ===== Sub components ===== */
-function SideLink({ label, active, onClick }: { label: string; active: boolean; onClick: () => void; }) {
-  return <button className={`aside-link as-btn ${active ? "active" : ""}`} onClick={onClick}>{label}</button>;
-}
-
-function MyBroadcastView({ campId, streamId, meta, nickname, avatar, viewers, participants, onToggle, onCheckout, localStream, broadcastChannel }: { campId: string; streamId: number | null; meta: Omit<StreamMeta, "type">; nickname: string; avatar?: string; viewers: number; participants: string[]; onToggle: (key: ToggleKey) => void; onCheckout: () => void; localStream: MediaStream | null; broadcastChannel: string; }) {
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
-  }, [localStream]);
-
-  // 썸네일 캡처 및 업로드
-  useEffect(() => {
-    if (!localStream || !streamId || !localVideoRef.current) return;
-
-    const video = localVideoRef.current;
-    const canvas = document.createElement('canvas');
-    canvas.width = 320; // 썸네일 너비
-    canvas.height = 180; // 썸네일 높이 (16:9 비율)
-    const context = canvas.getContext('2d');
-
-    const uploadThumbnail = () => {
-      if (context && video.readyState >= 2) { // 비디오 데이터가 준비되었는지 확인
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.5); // 50% 품질의 JPEG
-        
-        http(`/api/camps/${campId}/streams/${streamId}/thumbnail`, {
-          method: 'POST',
-          body: JSON.stringify({ thumbnail: dataUrl }),
-        }).catch(err => console.error("썸네일 업로드 실패:", err));
-      }
-    };
-
-    // 30초마다 썸네일 업로드
-    const interval = setInterval(uploadThumbnail, 30000);
-
-    // 컴포넌트 마운트 시 한 번 즉시 실행
-    setTimeout(uploadThumbnail, 1000); // 1초 후 첫 썸네일 업로드
-
-    return () => clearInterval(interval);
-  }, [localStream, streamId, campId]);
-
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 360px", gap: 16 }}>
-      <div style={{ position: "relative" }}>
-        <video ref={localVideoRef} autoPlay playsInline muted className={`video-surface ${meta.camOn ? "on" : ""}`} style={{ height: 560, width: "100%", objectFit: "cover", background: "#222" }} />
-        <div style={{ position: "absolute", left: 16, bottom: 16, display: "flex", gap: 12, alignItems: "center", background: "rgba(0,0,0,.45)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 12, padding: "10px 14px", backdropFilter: "blur(4px)" }}>
-          <div style={{ display: "grid" }}>
-            <div style={{ fontWeight: 800 }}>{meta.title || "제목 없는 방송"}</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, opacity: 0.9 }}>
-              <span style={{ fontSize: 18 }}>{avatar || "🙂"}</span>
-              <span>{nickname}</span>
-              <span>· {meta.track}</span>
-            </div>
-          </div>
-        </div>
-        <div style={{ position: "absolute", right: 16, bottom: 16, display: "flex", gap: 8 }}>
-          <button className="icon-btn" title={meta.micOn ? "마이크 켜짐" : "마이크 음소거"} onClick={() => onToggle("micOn")}>{meta.micOn ? "🎙️" : "🔇"}</button>
-          <button className="icon-btn" title={meta.camOn ? "카메라 끄기" : "카메라 켜기"} onClick={() => onToggle("camOn")}>{meta.camOn ? "📷" : "🚫📷"}</button>
-          <button className="icon-btn" title={meta.screenOn ? "화면 공유 끄기" : "화면 공유 켜기"} onClick={() => onToggle("screenOn")}>{meta.screenOn ? "🖥️" : "🚫🖥️"}</button>
-          <button className="btn sm danger" onClick={onCheckout} style={{ marginLeft: 8 }}>체크아웃</button>
-        </div>
-      </div>
-      <div style={{ display: "grid", gap: 12 }}>
-        <div className="mine" style={{ padding: 12, maxHeight: 220, overflow: "auto" }}>
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>참여자 <span style={{ opacity: 0.7, fontWeight: 500 }}>{viewers}명</span></div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {participants.length === 0 ? <div className="muted">아직 참여자가 없어요.</div> : participants.map((name, idx) => <div key={`${name}-${idx}`} className="chip" style={{ justifyContent: "flex-start" }}>{name}</div>)}
-          </div>
-        </div>
-        <ChatPage channel={broadcastChannel} placeholder="채팅 입력…" nickname={nickname} />
-      </div>
-    </div>
-  );
-}
-
-
-
-function CheckinForm({ defaultTitle, defaultTrack, defaultMic, defaultCam, defaultScreen, onCancel, onStart }: { defaultTitle?: string; defaultTrack: Track; defaultMic: boolean; defaultCam: boolean; defaultScreen: boolean; onCancel: () => void; onStart: (v: Omit<StreamMeta, "type">) => void; }) {
-  const [title, setTitle] = useState(defaultTitle || "");
-  const [track, setTrack] = useState<Track>(defaultTrack);
-  const [micOn, setMicOn] = useState(defaultMic);
-  const [camOn, setCamOn] = useState(defaultCam);
-  const [screenOn, setScreenOn] = useState(defaultScreen);
-
-  return (
-    <form className="form" onSubmit={(e) => { e.preventDefault(); onStart({ title, track, micOn, camOn, screenOn }); }}>
-      <label>방송 제목</label>
-      <input className="ipt" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 오늘의 문제풀이" />
-      <label>학습 구분</label>
-      <div style={{ display: "flex", gap: 8 }}>
-        {(["WEB", "ANDROID", "IOS"] as Track[]).map((t) => <button type="button" key={t} className={`chip ${track === t ? "on" : ""}`} onClick={() => setTrack(t)}>{t}</button>)}
-      </div>
-      <label>카메라</label>
-      <div><input type="checkbox" checked={camOn} onChange={(e) => setCamOn(e.target.checked)} /> 내 얼굴 보이기</div>
-      <label>마이크</label>
-      <div><input type="checkbox" checked={micOn} onChange={(e) => setMicOn(e.target.checked)} /> 음소거 해제</div>
-      <label>화면 공유</label>
-      <div><input type="checkbox" checked={screenOn} onChange={(e) => setScreenOn(e.target.checked)} /> 화면 공유</div>
-      <div className="modal-actions">
-        <button type="button" className="btn ghost" onClick={onCancel}>취소</button>
-        <button type="submit" className="btn">체크인</button>
-      </div>
-    </form>
-  );
-}

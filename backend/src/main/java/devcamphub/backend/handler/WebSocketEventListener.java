@@ -1,16 +1,13 @@
 package devcamphub.backend.handler;
 
-import devcamphub.backend.dto.SignalMessage;
+import devcamphub.backend.repository.UserRepository;
 import devcamphub.backend.service.WebSocketSessionRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
-import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.messaging.SessionDisconnectEvent;
-
-import java.util.Objects;
+import org.springframework.web.socket.messaging.SessionConnectedEvent;
 
 @Slf4j
 @Component
@@ -18,32 +15,26 @@ import java.util.Objects;
 public class WebSocketEventListener {
 
     private final WebSocketSessionRegistry sessionRegistry;
-    private final SimpMessageSendingOperations messagingTemplate;
+    private final UserRepository userRepository;
 
     @EventListener
-    public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
+    public void handleWebSocketConnectListener(SessionConnectedEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = headerAccessor.getSessionId();
-        String username = sessionRegistry.getUserBySessionId(sessionId);
 
-        if (username != null) {
-            log.info("User Disconnected: {}", username);
-
-            // 사용자가 참여하고 있던 방 찾기
-            String roomId = sessionRegistry.getRoomIdForUser(username);
-            if (roomId != null) {
-                // 방에서 사용자 제거
-                sessionRegistry.leaveRoom(username);
-
-                // 다른 참여자들에게 "leave" 메시지 전송
-                SignalMessage leaveMessage = new SignalMessage();
-                leaveMessage.setType("leave");
-                leaveMessage.setSender(username);
-                messagingTemplate.convertAndSend("/topic/signal/" + roomId, leaveMessage);
-            }
-
-            // 세션 등록 해제
-            sessionRegistry.unregisterSession(sessionId);
+        if (event.getUser() == null || event.getUser().getName() == null) {
+            log.warn("User principal is null for session: {}", sessionId);
+            return;
         }
+
+        String userEmail = event.getUser().getName();
+        log.info("WebSocket session connected: sessionId={}, userEmail={}", sessionId, userEmail);
+
+        // 이메일을 사용하여 DB에서 사용자 정보를 찾고, 닉네임을 가져옵니다.
+        userRepository.findByEmail(userEmail).ifPresent(user -> {
+            String nickname = user.getNickname();
+            sessionRegistry.registerSession(sessionId, nickname);
+            log.info("Session registered with nickname: {} for email: {}", nickname, userEmail);
+        });
     }
 }

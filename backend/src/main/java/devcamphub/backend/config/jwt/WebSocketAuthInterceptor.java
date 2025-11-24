@@ -10,15 +10,12 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
@@ -28,43 +25,75 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+        StompCommand command = accessor.getCommand();
 
-        if (StompCommand.CONNECT.equals(accessor.getCommand()) || StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
-            log.debug("WebSocket CONNECT or SUBSCRIBE command received.");
-            List<String> authorization = accessor.getNativeHeader("Authorization");
-            String token = null;
-            if (authorization != null && !authorization.isEmpty()) {
-                String bearerToken = authorization.get(0);
-                if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-                    token = bearerToken.substring(7);
-                    log.debug("Extracted Bearer token: {}", token);
-                }
-            }
+        if (StompCommand.CONNECT.equals(command)) {
+            log.info(">>> [WS-CONNECT] Intercepting CONNECT command. Attempting to authenticate...");
+
+            String token = extractToken(accessor);
 
             if (token != null) {
                 try {
                     String username = jwtUtil.extractUsername(token);
-                    log.debug("Extracted username from token: {}", username);
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-                    if (jwtUtil.validateToken(token, userDetails)) {
-                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities());
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
-                        accessor.setUser(authentication);
-                        log.info(">>> WebSocketAuthInterceptor: Authentication successful for user: {}. Principal set on accessor.", username);
-                    } else {
-                        log.debug("WebSocket token validation failed for user: {}", username);
+                    if (username != null) {
+                        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                        if (jwtUtil.validateToken(token, userDetails)) {
+                            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities());
+                            accessor.setUser(authentication);
+                            log.info(">>> [WS-CONNECT] Authentication SUCCESS for user: {}. Principal set on accessor.",
+                                    username);
+                        } else {
+                            log.warn(">>> [WS-CONNECT] Token validation FAILED for user: {}", username);
+                        }
                     }
                 } catch (Exception e) {
-                    log.error("WebSocket JWT authentication failed: {}", e.getMessage(), e);
+                    log.error(">>> [WS-CONNECT] Authentication exception: {}", e.getMessage());
                 }
             } else {
-                log.info(">>> WebSocketAuthInterceptor: No JWT token found in WebSocket CONNECT/SUBSCRIBE headers. Proceeding as unauthenticated.");
+                // No token in STOMP headers; try to find a principal placed during the HTTP
+                // handshake
+                if (accessor.getSessionAttributes() != null) {
+                    Object principalObj = accessor.getSessionAttributes().get("principal");
+                    if (principalObj instanceof java.security.Principal) {
+                        accessor.setUser((java.security.Principal) principalObj);
+                        log.info(">>> [WS-CONNECT] Used Principal from handshake session attributes: {}",
+                                accessor.getUser());
+                    } else if (principalObj != null) {
+                        log.debug(">>> [WS-CONNECT] session 'principal' attribute found but not a Principal: {}",
+                                principalObj.getClass());
+                    } else {
+                        log.warn(">>> [WS-CONNECT] No JWT token found in headers or handshake session.");
+                    }
+                } else {
+                    log.warn(
+                            ">>> [WS-CONNECT] No JWT token found and no session attributes available. Proceeding unauthenticated.");
+                }
             }
-        } else if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
-            log.info(">>> WebSocketAuthInterceptor: DISCONNECT command received for session: {}", accessor.getSessionId());
+        } else if (StompCommand.SEND.equals(command)) {
+            // SEND 요청 시, 세션에 저장된 User가 있는지 확인
+            log.info(">>> [WS-SEND] Intercepting SEND command. User from accessor: {}", accessor.getUser());
         }
+
         return message;
+    }
+
+    private String extractToken(StompHeaderAccessor accessor) {
+        // 헤더 이름 대소문자를 다르게 전송할 경우 처리
+        List<String> authorization = accessor.getNativeHeader("Authorization");
+        if (authorization == null || authorization.isEmpty()) {
+            authorization = accessor.getNativeHeader("authorization");
+        }
+        if (authorization == null || authorization.isEmpty()) {
+            // STOMP CONNECT에 Authorization 헤더가 없음
+            log.debug(">>> [WS-CONNECT] No Authorization header present in STOMP headers, messageHeaders={}",
+                    accessor.getMessageHeaders());
+            return null;
+        }
+        String bearerToken = authorization.get(0);
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
     }
 }

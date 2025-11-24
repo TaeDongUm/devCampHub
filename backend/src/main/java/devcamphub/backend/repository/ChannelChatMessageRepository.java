@@ -21,4 +21,9 @@ public interface ChannelChatMessageRepository extends JpaRepository<ChannelChatM
      * 특정 캠프의 특정 채널에 해당하는 메시지를 오래된 순으로 조회합니다.
      */
     List<ChannelChatMessage> findByCampIdAndChannelOrderByCreatedAtAsc(Long campId, String channel);
+
+    /**
+     * 클라이언트 메시지 ID로 중복 확인 (Idempotent 처리)
+     */
+    boolean existsByClientMsgId(Long clientMsgId);
 }

@@ -28,6 +28,13 @@ public class ChatService {
 
     @Transactional
     public void saveAndBroadcastMessage(ChatMessageDto messageDto, Long campId, String userEmail) {
+        // 중복 메시지 체크 (Idempotent)
+        if (messageDto.getClientMsgId() != null &&
+                chatMessageRepository.existsByClientMsgId(messageDto.getClientMsgId())) {
+            // 이미 처리된 메시지 → 조용히 무시
+            return;
+        }
+
         // 1. 메시지를 보낸 사용자(User)와 메시지가 속한 캠프(Camp)를 DB에서 조회합니다.
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userEmail));
@@ -40,6 +47,7 @@ public class ChatService {
                 .author(user)
                 .channel(messageDto.getChannel())
                 .content(messageDto.getContent())
+                .clientMsgId(messageDto.getClientMsgId()) // clientMsgId 저장
                 .build();
 
         // 3. 메시지를 데이터베이스에 저장합니다.
@@ -56,7 +64,8 @@ public class ChatService {
 
     public List<ChatMessageDto> getChatHistory(Long campId, String channel) {
         // 캠프와 채널에 해당하는 메시지를 조회합니다.
-        List<ChannelChatMessage> messages = chatMessageRepository.findByCampIdAndChannelOrderByCreatedAtAsc(campId, channel);
+        List<ChannelChatMessage> messages = chatMessageRepository.findByCampIdAndChannelOrderByCreatedAtAsc(campId,
+                channel);
 
         // 조회된 메시지를 ChatMessageDto 리스트로 변환합니다.
         return messages.stream().map(message -> {

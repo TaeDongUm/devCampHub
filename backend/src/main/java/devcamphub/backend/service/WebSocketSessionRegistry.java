@@ -1,5 +1,6 @@
 package devcamphub.backend.service;
 
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -13,52 +14,57 @@ public class WebSocketSessionRegistry {
     private final RedisTemplate<String, String> redisTemplate;
 
     private static final String ROOM_PREFIX = "ws:room:";
-    private static final String SESSION_USER_MAP = "ws:session-user";
-    private static final String USER_ROOM_MAP = "ws:user-room";
+    private static final String SESSION_NICKNAME_MAP = "ws:session-nickname";
+    private static final String NICKNAME_ROOM_MAP = "ws:nickname-room";
 
     private String getRoomKey(String roomId) {
         return ROOM_PREFIX + roomId;
     }
 
-    public void registerSession(String sessionId, String userEmail) {
-        redisTemplate.opsForHash().put(SESSION_USER_MAP, sessionId, userEmail);
-        log.info("Session registered in Redis: {} for user {}", sessionId, userEmail);
+    public void registerSession(String sessionId, String nickname) {
+        redisTemplate.opsForHash().put(SESSION_NICKNAME_MAP, sessionId, nickname);
+        log.info("Session registered in Redis: {} for nickname {}", sessionId, nickname);
     }
 
     public String unregisterSession(String sessionId) {
-        String userEmail = (String) redisTemplate.opsForHash().get(SESSION_USER_MAP, sessionId);
-        if (userEmail != null) {
-            redisTemplate.opsForHash().delete(SESSION_USER_MAP, sessionId);
-            log.info("Session unregistered from Redis: {} for user {}", sessionId, userEmail);
+        String nickname = (String) redisTemplate.opsForHash().get(SESSION_NICKNAME_MAP, sessionId);
+        if (nickname != null) {
+            redisTemplate.opsForHash().delete(SESSION_NICKNAME_MAP, sessionId);
+            log.info("Session unregistered from Redis: {} for nickname {}", sessionId, nickname);
         }
-        return userEmail;
+        return nickname;
     }
 
-    public void joinRoom(String roomId, String userEmail) {
+    public void joinRoom(String roomId, String nickname) {
         String roomKey = getRoomKey(roomId);
-        redisTemplate.opsForSet().add(roomKey, userEmail);
-        redisTemplate.opsForHash().put(USER_ROOM_MAP, userEmail, roomId);
+        redisTemplate.opsForSet().add(roomKey, nickname);
+        redisTemplate.opsForHash().put(NICKNAME_ROOM_MAP, nickname, roomId);
         Long size = redisTemplate.opsForSet().size(roomKey);
-        log.info("User {} joined room {}. Total participants in Redis: {}", userEmail, roomId, size);
+        log.info("Nickname {} joined room {}. Total participants in Redis: {}", nickname, roomId, size);
     }
 
-    public void leaveRoom(String userEmail) {
-        String roomId = (String) redisTemplate.opsForHash().get(USER_ROOM_MAP, userEmail);
+    public void leaveRoom(String nickname) {
+        String roomId = (String) redisTemplate.opsForHash().get(NICKNAME_ROOM_MAP, nickname);
         if (roomId != null) {
             String roomKey = getRoomKey(roomId);
-            if (Boolean.TRUE.equals(redisTemplate.opsForSet().remove(roomKey, userEmail))) {
+            if (Boolean.TRUE.equals(redisTemplate.opsForSet().remove(roomKey, nickname))) {
                 Long size = redisTemplate.opsForSet().size(roomKey);
-                log.info("User {} left room {}. Remaining participants in Redis: {}", userEmail, roomId, size);
+                log.info("Nickname {} left room {}. Remaining participants in Redis: {}", nickname, roomId, size);
             }
-            redisTemplate.opsForHash().delete(USER_ROOM_MAP, userEmail);
+            redisTemplate.opsForHash().delete(NICKNAME_ROOM_MAP, nickname);
         }
     }
 
-    public String getRoomIdForUser(String userEmail) {
-        return (String) redisTemplate.opsForHash().get(USER_ROOM_MAP, userEmail);
+    public Set<String> getUsersInRoom(String roomId) {
+        String roomKey = getRoomKey(roomId);
+        return redisTemplate.opsForSet().members(roomKey);
     }
 
-    public String getUserBySessionId(String sessionId) {
-        return (String) redisTemplate.opsForHash().get(SESSION_USER_MAP, sessionId);
+    public String getRoomIdForUser(String nickname) {
+        return (String) redisTemplate.opsForHash().get(NICKNAME_ROOM_MAP, nickname);
+    }
+
+    public String getNicknameBySessionId(String sessionId) {
+        return (String) redisTemplate.opsForHash().get(SESSION_NICKNAME_MAP, sessionId);
     }
 }
