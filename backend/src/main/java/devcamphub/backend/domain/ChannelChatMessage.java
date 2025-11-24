@@ -20,6 +20,10 @@ public class ChannelChatMessage {
     @Column(name = "message_id")
     private Long id;
 
+    // 클라이언트 생성 메시지 ID (중복 방지용)
+    @Column(name = "client_msg_id", unique = true)
+    private Long clientMsgId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "camp_id", nullable = false)
     private Camp camp;
@@ -40,10 +44,11 @@ public class ChannelChatMessage {
     private LocalDateTime createdAt;
 
     @Builder
-    public ChannelChatMessage(Camp camp, User author, String channel, String content) {
+    public ChannelChatMessage(Camp camp, User author, String channel, String content, Long clientMsgId) {
         this.camp = camp;
         this.author = author;
         this.channel = channel;
         this.content = content;
+        this.clientMsgId = clientMsgId;
     }
 }

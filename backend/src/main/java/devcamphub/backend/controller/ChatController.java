@@ -8,12 +8,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -21,6 +23,7 @@ import java.util.List;
 public class ChatController {
 
     private final ChatService chatService;
+    private final SimpMessagingTemplate messagingTemplate; // ACK 전송용
 
     /**
      * 클라이언트에서 "/app/chat/{campId}/{channel}"로 메시지를 보내면 이 메소드가 처리합니다.
@@ -49,9 +52,21 @@ public class ChatController {
 
         messageDto.setChannel(channel);
         log.debug("ChatMessageDto after setting channel: {}", messageDto);
+        log.info("[시도] Received clientMsgId: {}", messageDto.getClientMsgId()); // 디버깅
 
         chatService.saveAndBroadcastMessage(messageDto, campId, username);
         log.info("Message processed by ChatService for user {}.", username);
+
+        // ACK 전송
+        if (messageDto.getClientMsgId() != null) {
+            messagingTemplate.convertAndSendToUser(
+                    username,
+                    "/queue/ack",
+                    Map.of("clientMsgId", messageDto.getClientMsgId(), "status", "DELIVERED"));
+            log.info("[시도] ✅ ACK sent to user {} for msgId: {}", username, messageDto.getClientMsgId());
+        } else {
+            log.warn("[시도] ❌ clientMsgId is NULL - ACK not sent!");
+        }
     }
 
     @GetMapping("/api/camps/{campId}/chat/{channel}/history")
