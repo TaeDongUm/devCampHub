@@ -35,6 +35,8 @@ secrets/*.*
 /backend/out/
 
 # --- Spring Boot 환경파일(루트 보안망) ---
+# application.properties는 환경변수 참조만 포함하므로 추적 허용
 /backend/src/main/resources/application*.yml
 /backend/src/main/resources/application*.yaml
-/backend/src/main/resources/application*.properties
+/backend/src/main/resources/application-local*.properties
+/backend/src/main/resources/application-secret*.properties
