@@ -175,3 +175,6 @@ graph LR
 
 ## 📁 8. 기술 선택 이유
 [기술 선택 이유](https://github.com/TaeDongUm/devCampHub/wiki/%EA%B8%B0%EC%88%A0-%EC%84%A0%ED%83%9D-%EC%9D%B4%EC%9C%A0)
+
+## 😵‍💫 9. 네트워크 장애 주입해보기
+[네트워크 장애 주입해보기](https://mud-skate-081.notion.site/3888bb2fe8778024820df2788a191c08?source=copy_link)
