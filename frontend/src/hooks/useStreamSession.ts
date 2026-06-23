@@ -32,6 +32,7 @@ export function useStreamSession(campId: string, nickname: string, joinStreamId?
 
   const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
   const stompClient = useRef<Client | null>(null);
+  const wsBase = import.meta.env.VITE_WS_BASE ?? 'http://127.0.0.1:8080';
 
   const createPeerConnection = useCallback((peerNickname: string, currentStreamId: number) => {
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
@@ -144,9 +145,14 @@ export function useStreamSession(campId: string, nickname: string, joinStreamId?
     }
 
     const token = localStorage.getItem('token');
-    const sockJsUrl = token 
-      ? `http://127.0.0.1:8080/ws-stomp?token=${encodeURIComponent(token)}`
-      : 'http://127.0.0.1:8080/ws-stomp';
+    const normalizedWsBase = wsBase.startsWith('ws://')
+      ? wsBase.replace(/^ws:\/\//, 'http://')
+      : wsBase.startsWith('wss://')
+        ? wsBase.replace(/^wss:\/\//, 'https://')
+        : wsBase;
+    const sockJsUrl = token
+      ? `${normalizedWsBase}/ws-stomp?token=${encodeURIComponent(token)}`
+      : `${normalizedWsBase}/ws-stomp`;
 
     const client = new Client({
         webSocketFactory: () => new SockJS(sockJsUrl),
@@ -224,7 +230,7 @@ export function useStreamSession(campId: string, nickname: string, joinStreamId?
         peerConnections.current = {};
         setRemoteStreams({});
     };
-  }, [streamId, nickname, createPeerConnection]);
+  }, [streamId, nickname, createPeerConnection, wsBase]);
 
   return {
     isStreaming,
