@@ -43,7 +43,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://127.0.0.1:5173"));
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "https://your-vercel-domain.vercel.app"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
         configuration.setExposedHeaders(Arrays.asList("x-auth-token"));
@@ -63,7 +66,12 @@ public class SecurityConfig {
                 // 세션 관리 정책을 STATELESS로 설정
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // HTTP 요청에 대한 인가 규칙 설정
-                .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll()) // 모든 요청 허용 (임시)
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/camps", "/api/camps/search", "/api/camps/*/detail")
+                        .permitAll()
+                        .requestMatchers("/ws-stomp", "/ws-stomp/**").permitAll()
+                        .anyRequest().authenticated())
                 // 직접 구현한 JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new TestFilter(), JwtAuthenticationFilter.class); // TestFilter 추가

@@ -26,6 +26,8 @@ export const useChat = (fullChannelId: string, nickname: string) => {
     'connecting' | 'connected' | 'disconnected' | 'reconnecting'
   >('connecting');
   const clientRef = useRef<Client | null>(null);
+  const apiBase = import.meta.env.VITE_API_BASE ?? 'http://127.0.0.1:8080';
+  const wsBase = import.meta.env.VITE_WS_BASE ?? 'http://127.0.0.1:8080';
   // ACK를 기다리는 메시지들 (Map<clientMsgId, payload>)
   const pendingMessagesRef = useRef<Map<number, { text: string; code?: string; files?: unknown[] }>>(new Map());
   // 마지막 실패한 메시지 ID (재시도용)
@@ -55,7 +57,7 @@ export const useChat = (fullChannelId: string, nickname: string) => {
 
     const fetchChatHistory = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8080/api/camps/${campId}/chat/${channelName}/history`, {
+        const response = await fetch(`${apiBase}/api/camps/${campId}/chat/${channelName}/history`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -73,9 +75,14 @@ export const useChat = (fullChannelId: string, nickname: string) => {
     fetchChatHistory();
 
     const token = localStorage.getItem('token');
-    const sockJsUrl = token 
-      ? `http://127.0.0.1:8080/ws-stomp?token=${encodeURIComponent(token)}`
-      : 'http://127.0.0.1:8080/ws-stomp';
+    const normalizedWsBase = wsBase.startsWith('ws://')
+      ? wsBase.replace(/^ws:\/\//, 'http://')
+      : wsBase.startsWith('wss://')
+        ? wsBase.replace(/^wss:\/\//, 'https://')
+        : wsBase;
+    const sockJsUrl = token
+      ? `${normalizedWsBase}/ws-stomp?token=${encodeURIComponent(token)}`
+      : `${normalizedWsBase}/ws-stomp`;
 
     const client = new Client({
       webSocketFactory: () => new SockJS(sockJsUrl),
@@ -142,7 +149,7 @@ export const useChat = (fullChannelId: string, nickname: string) => {
       client.deactivate();
       console.log('[useChat] Disconnected from WebSocket');
     };
-  }, [fullChannelId, nickname, campId, channelName]);
+  }, [fullChannelId, nickname, campId, channelName, apiBase, wsBase]);
 
   const sendMessage = async (
     messagePayload: { text: string; code?: string; files?: unknown[] },
